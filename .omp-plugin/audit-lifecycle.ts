@@ -1,0 +1,675 @@
+import type {
+	AuditCaptureInput,
+	MutationCandidate,
+	WriteTargetObserver,
+} from "./audit";
+import type { MutationMessageDetails } from "./messages";
+import { defaultWarn } from "./warn-sink";
+
+export interface AuditLifecycleOptions {
+	capture(
+		input: AuditCaptureInput,
+		acceptTarget?: WriteTargetObserver,
+	): Promise<MutationCandidate | undefined>;
+	complete(
+		candidate: MutationCandidate | undefined,
+		result: unknown,
+		isError: boolean,
+	): Promise<MutationMessageDetails[]>;
+	/**
+	 * Bound for the end-run drain in milliseconds. Stock OMP bounds each
+	 * extension handler at 30s; the drain must stay well below that so a
+	 * pathological missing `tool_execution_end` can never stall a session.
+	 * Defaults to 5_000.
+	 */
+	barrierMs?: number;
+	/** Injectable clock for deterministic tests. */
+	now?: () => number;
+	/** Injectable sleep for deterministic tests. */
+	sleep?: (ms: number) => Promise<void>;
+	/**
+	 * Optional diagnostic sink for swallowed audit failures. Keyed warn-once
+	 * by failure class (never by error message) so a sticky NFS/EIO path
+	 * cannot spam the operator. Defaults to `console.warn`. A failing sink
+	 * is itself swallowed — diagnostics must never change control flow.
+	 */
+	warn?: (message: string) => void;
+}
+
+/**
+ * Closed set of silent-failure classes the lifecycle may surface once.
+ * Keys are stable tokens — never an error string that could embed a path
+ * or user content (which would both leak and defeat deduplication).
+ *
+ * - `capture-failed` — pre-image capture rejected (confinement I/O, etc.).
+ * - `completion-failed` — post-image complete/publish or sync work threw.
+ * - `barrier-drop` — end-run drain timed out; outstanding work abandoned.
+ * - `chain-failed` — serialized `agent_end` link threw (e.g. endRun boom).
+ *
+ * Intentionally absent: terminal purge of unended pending records. That
+ * path is documented fail-closed behavior (FULL-DOCUMENTATION.md) and must
+ * stay silent — it is not a bug signal.
+ */
+export type AuditFailureClass =
+	| "capture-failed"
+	| "completion-failed"
+	| "barrier-drop"
+	| "chain-failed";
+
+export interface WriteEndInput {
+	toolCallId: string;
+	result: unknown;
+	isError: boolean;
+}
+
+/**
+ * Opaque run token returned by `snapshot` and consumed by `barrier`. The
+ * token is the record itself so a drain pinned to one logical run can never
+ * re-address itself to a replacement record registered later under the same
+ * `toolCallId` (nested xd:// device dispatch reuses the model's id): map
+ * lookups by id would see the successor, lookups through the token cannot.
+ */
+export interface AuditRunToken {
+	readonly toolCallId: string;
+	readonly capture: Promise<MutationCandidate | undefined> | undefined;
+	readonly completion: Promise<void> | undefined;
+	readonly payload: unknown;
+	readonly abandoned: boolean;
+}
+
+/**
+ * Outcome of an end-run drain (`barrier`), separating the two consumers of
+ * the result:
+ *
+ * - `settled` gates the adapter's end-run finalization (`work`): `true`
+ *   means the drain finished within its bound — every drained record either
+ *   completed or was finally abandoned (terminal purge, dispose,
+ *   replacement), so finalization may run. Records still pending at a
+ *   continuation are not part of the drain (see `barrier`) and count
+ *   neither way.
+ * - `evidenceReady` gates post-run consumers such as the auto-shake: `true`
+ *   only when the drain settled AND no record in scope was abandoned, so no
+ *   run evidence was lost. (At a continuation a still-pending record is not
+ *   abandoned: its evidence is deferred to the next run's drain and
+ *   evaluated there.) A publication/completion failure, terminal purge,
+ *   teardown, same-id replacement, or timeout abandons evidence and reports
+ *   `false` — the run must not shake.
+ */
+export interface BarrierOutcome {
+	settled: boolean;
+	evidenceReady: boolean;
+}
+
+interface AuditRecord extends AuditRunToken {
+	toolCallId: string;
+	capture: Promise<MutationCandidate | undefined> | undefined;
+	completion: Promise<void> | undefined;
+	payload: unknown;
+	abandoned: boolean;
+	/** A terminal drain owns this token; later failures need no tombstone. */
+	terminal: boolean;
+	/** Claimed until the native call and its audit have both settled. */
+	targets?: Set<string>;
+	release?: () => void;
+}
+
+interface ResolvedOptions {
+	capture: AuditLifecycleOptions["capture"];
+	complete: AuditLifecycleOptions["complete"];
+	barrierMs: number;
+	now: () => number;
+	sleep: (ms: number) => Promise<void>;
+	warn: (message: string) => void;
+}
+
+const DEFAULT_BARRIER_MS = 5_000;
+
+const defaultNow = (): number => Date.now();
+
+/** Drop retained pre-image bytes once evidence is done or abandoned. */
+function releaseCandidatePreImage(
+	candidate: MutationCandidate | undefined,
+): void {
+	if (candidate) candidate.before = "";
+}
+
+/**
+ * When a record is abandoned, release any pre-image the capture promise
+ * already holds (or will hold when it settles). endWrite's finally covers
+ * the path where completion was already running; this covers discard,
+ * dispose, supersede, terminal purge, and barrier timeout while the
+ * capture is still pending or settled without an end.
+ *
+ * If `record.completion` is set, endWrite already owns the candidate and
+ * will release in its finally (and `completeWriteCandidate` clears after
+ * the diff). Attaching here would race with those `before` reads.
+ */
+function releaseRecordPreImage(record: AuditRecord): void {
+	const release = record.release;
+	record.release = undefined;
+	release?.();
+	if (!record.capture || record.completion) return;
+	void record.capture.then(releaseCandidatePreImage, () => undefined);
+}
+
+const defaultSleep = (ms: number): Promise<void> =>
+	new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Plugin-side lifecycle for write/edit audit and recognized-Git bookkeeping.
+ *
+ * Stock OMP invokes extension event listeners without awaiting their returned
+ * promises, so the async handlers for `tool_execution_start`,
+ * `tool_execution_end`, and `agent_end` can overlap freely. This module makes
+ * that bookkeeping correct under such fire-and-forget delivery:
+ *
+ * - `startWrite` registers the audit record synchronously, before the first
+ *   filesystem await, so a fast `tool_execution_end` always finds the record
+ *   (a plain capture-then-register flow loses it and the write ends up with
+ *   no `+N|0` evidence).
+ * - `endWrite` consumes the same record synchronously and runs
+ *   capture -> post-image audit -> publish exactly once inside a tracked
+ *   promise; `endSync` tracks synchronous edit/Git publication and failures.
+ * - `barrier` waits for every already-consumed completion of the logical run
+ *   (started or ended before the `agent_end` emission — see `snapshot`) to
+ *   settle, bounded by `barrierMs`. Pending records at a continuation are
+ *   deliberately left registered because stock OMP may deliver their end
+ *   after `agent_end(willContinue)` on a separate serial chain.
+ * - Terminal drains still purge unended records immediately and fail closed
+ *   for late ends, preserving the committed transcript boundary.
+ *
+ * Nothing here touches native tool execution: it only orders plugin
+ * bookkeeping. Missing/aborted/inexact evidence fails closed — no publish,
+ * no hang.
+ */
+export class AuditLifecycle {
+	#options: ResolvedOptions;
+	/** Every record of the session, until its completion settles or it is abandoned. */
+	#records = new Map<string, AuditRecord>();
+	/** Settled failures remain visible until their logical run's terminal drain. */
+	#failedRecords = new Set<AuditRecord>();
+	/** Records whose `tool_execution_end` has not arrived yet. */
+	#pending = new Map<string, AuditRecord>();
+	#targets = new Map<string, Set<AuditRecord>>();
+	#changeWaiters: Array<() => void> = [];
+	/**
+	 * Serialized `agent_end` queue: links run strictly in emission order even
+	 * though stock invokes the listeners fire-and-forget. Bumped by
+	 * `dispose()` so links queued before a session switch/shutdown skip their
+	 * work and cannot finalize a different session's adapter.
+	 */
+	#agentEndChain: Promise<boolean> = Promise.resolve(false);
+	#generation = 0;
+	/** One warn per failure class for the life of this instance. */
+	#warned = new Set<AuditFailureClass>();
+
+	constructor(options: AuditLifecycleOptions) {
+		this.#options = {
+			capture: options.capture,
+			complete: options.complete,
+			barrierMs: options.barrierMs ?? DEFAULT_BARRIER_MS,
+			now: options.now ?? defaultNow,
+			sleep: options.sleep ?? defaultSleep,
+			warn: options.warn ?? defaultWarn,
+		};
+	}
+
+	#warnOnce(key: AuditFailureClass, message: string): void {
+		if (this.#warned.has(key)) return;
+		this.#warned.add(key);
+		try {
+			this.#options.warn(message);
+		} catch {
+			// A failing warning sink must never break the audit path.
+		}
+	}
+
+	/**
+	 * Synchronously registers a write audit record and starts the pre-image
+	 * capture in the background. Must be called before the first await of the
+	 * `tool_execution_start` handler.
+	 */
+	startWrite(input: AuditCaptureInput, payload?: unknown): void {
+		const record = this.#register(input.toolCallId, { payload });
+		record.capture = this.#options
+			.capture(input, (target) => this.#claimTarget(record, target))
+			.catch(() => {
+				this.#warnOnce(
+					"capture-failed",
+					"omp-compact: write audit capture-failed (evidence dropped)",
+				);
+				return undefined;
+			});
+	}
+
+	/**
+	 * Synchronously registers a synchronous edit/Git record. The
+	 * payload is handed back to the completion work at `tool_execution_end`.
+	 */
+	startSync(
+		toolCallId: string,
+		payload?: unknown,
+		resources?: { targets: ReadonlySet<string>; release(): void },
+	): void {
+		const record = this.#register(toolCallId, { payload });
+		record.release = resources?.release;
+		if (resources)
+			for (const target of resources.targets)
+				this.#claimTarget(record, target, true);
+	}
+
+	/**
+	 * Consumes the record synchronously and runs capture -> complete ->
+	 * publish exactly once inside a tracked promise. `publish` is invoked
+	 * only with non-empty evidence, and only while the record is not
+	 * abandoned, so a late completion after the drain bound or teardown
+	 * appends nothing. The pre-image held on the candidate is released
+	 * after `complete` returns (and on abandon-before-complete) so up to
+	 * SNAPSHOT_MAX_BYTES of user file content does not stay resident.
+	 */
+	endWrite(
+		event: WriteEndInput,
+		publish: (mutations: MutationMessageDetails[], payload: unknown) => void,
+	): void {
+		const record = this.#pending.get(event.toolCallId);
+		if (!record || record.capture === undefined) return;
+		this.#pending.delete(event.toolCallId);
+		// Its native write has ended and an abandoned audit cannot publish.
+		if (record.abandoned) this.#releaseTarget(record);
+		const completion = (async () => {
+			let candidate: MutationCandidate | undefined;
+			try {
+				if (record.abandoned) return;
+				candidate = await record.capture;
+				if (record.abandoned) return;
+				const mutations = await this.#options.complete(
+					candidate,
+					event.result,
+					event.isError,
+				);
+				// The snapshot is fixed now; even a reentrant publish may start
+				// the next native write without invalidating this finished diff.
+				this.#releaseTarget(record);
+				if (record.abandoned || mutations.length === 0) return;
+				publish(mutations, record.payload);
+			} finally {
+				// completeWriteCandidate also clears; this covers the
+				// abandon-before-complete path where complete never ran.
+				releaseCandidatePreImage(candidate);
+			}
+		})().catch(() => {
+			this.#failCompletion(record);
+			// Fail closed: an audit error must not crash the fire-and-forget
+			// handler, reject an untracked promise, or double-publish.
+			this.#warnOnce(
+				"completion-failed",
+				"omp-compact: write audit completion-failed (evidence dropped)",
+			);
+		});
+		this.#trackCompletion(record, completion);
+	}
+
+	/**
+	 * Consumes a synchronous edit/Git record exactly once. Publication runs
+	 * at call time to preserve entry order; errors propagate to the event
+	 * runner while the failed token still blocks the run's auto-shake.
+	 */
+	endSync(toolCallId: string, work: (payload: unknown) => void): void {
+		const record = this.#pending.get(toolCallId);
+		if (!record || record.capture !== undefined) return;
+		this.#pending.delete(toolCallId);
+		this.#trackCompletion(record, Promise.resolve());
+		this.#releaseTarget(record);
+		if (record.abandoned) return;
+		try {
+			work(record.payload);
+		} catch (error) {
+			this.#failCompletion(record);
+			this.#warnOnce(
+				"completion-failed",
+				"omp-compact: sync audit completion-failed (evidence dropped)",
+			);
+			throw error;
+		} finally {
+			releaseRecordPreImage(record);
+		}
+	}
+
+	/**
+	 * Abandons a record without an end (e.g. adapter not installed). Any
+	 * in-flight completion of the record stays abandoned and publishes
+	 * nothing when it settles. A replacement record registered later under
+	 * the same id is untouched.
+	 */
+	discard(toolCallId: string): void {
+		const record = this.#records.get(toolCallId);
+		if (!record) return;
+		record.abandoned = true;
+		releaseRecordPreImage(record);
+		this.#removeIfCurrent(record);
+		this.#signalChange();
+	}
+
+	/**
+	 * Tokens of active records and settled publication failures. Call
+	 * synchronously inside `agent_end` so later work cannot join this drain.
+	 * Failures survive continuations until a terminal drain claims them.
+	 * Tokens (not ids) keep a drain pinned to the original record even when
+	 * a nested xd:// dispatch replaces it under the same `toolCallId`.
+	 */
+	snapshot(): ReadonlySet<AuditRunToken> {
+		const tokens = new Set<AuditRunToken>(this.#records.values());
+		for (const record of this.#failedRecords) tokens.add(record);
+		return tokens;
+	}
+
+	/**
+	 * Removes `record` from the bookkeeping maps only while it is still the
+	 * current entry for its `toolCallId`; a replacement registered later
+	 * under the same id is never touched by an older record's teardown.
+	 */
+	#removeIfCurrent(record: AuditRecord): void {
+		this.#releaseTarget(record);
+		if (this.#pending.get(record.toolCallId) === record) {
+			this.#pending.delete(record.toolCallId);
+		}
+		if (this.#records.get(record.toolCallId) === record) {
+			this.#records.delete(record.toolCallId);
+		}
+	}
+
+	/**
+	 * Drain gate for `agent_end`: settles once the audit work captured by
+	 * `snapshot` has completed, timed out, or been finally abandoned.
+	 *
+	 * - In-flight completions (a `tool_execution_end` already consumed the
+	 *   record) are always awaited, bounded by `barrierMs`.
+	 * - Records still pending at a terminal commit (`terminal === true`,
+	 *   classified like the ledger: not willContinue/toolUse) are purged
+	 *   immediately. Stock may reorder a continuation end, but a terminal
+	 *   transcript must never resurrect evidence after it is committed. The
+	 *   purge abandons the records, so the drain still settles (the adapter's
+	 *   end-run finalization may run) while `evidenceReady` is `false` — the
+	 *   purged evidence was never persisted, so post-run consumers such as
+	 *   the auto-shake must be skipped.
+	 * - At a continuation (`terminal === false`) pending records are not part
+	 *   of this drain: they remain in the maps so a late `tool_execution_end`
+	 *   can consume and publish their evidence.
+	 *
+	 * Returns `{ settled, evidenceReady }`:
+	 *
+	 * - `settled: true` — every record completed or was finally abandoned
+	 *   (terminal purge, dispose, same-id replacement) within the bound.
+	 * - `evidenceReady: true` — the drain settled and no record in scope was
+	 *   abandoned, so the run's audit/Git evidence was persisted.
+	 *
+	 * On timeout the outstanding records are abandoned (fail closed — no
+	 * deadlock, no late publish) and `{ settled: false, evidenceReady: false }`
+	 * is returned.
+	 */
+	async barrier(
+		runIds?: ReadonlySet<AuditRunToken>,
+		terminal = false,
+	): Promise<BarrierOutcome> {
+		const ids = runIds ?? this.snapshot();
+		const start = this.#options.now();
+
+		// Terminal boundary: purge pending records immediately before the drain.
+		// Stock may reorder a continuation end, but a terminal transcript must
+		// never resurrect evidence after commit. The purge abandons the
+		// records, so `evidenceReady` reports false while the drain still
+		// settles for the adapter's end-run finalization.
+		if (terminal) {
+			for (const token of ids) {
+				const record = token as AuditRecord;
+				record.terminal = true;
+				this.#failedRecords.delete(record);
+				if (this.#pending.get(record.toolCallId) === record) {
+					record.abandoned = true;
+					releaseRecordPreImage(record);
+					this.#removeIfCurrent(record);
+				}
+			}
+		}
+
+		for (;;) {
+			let outstanding = false;
+			for (const token of ids) {
+				const record = token as AuditRecord;
+				if (record.abandoned) continue; // fail-closed: settles nothing
+				// Identity-checked: a record replaced under the same id is
+				// neither awaited nor purged by this drain.
+				if (record.completion) {
+					outstanding = true;
+					break;
+				}
+			}
+			if (!outstanding) {
+				return {
+					settled: true,
+					evidenceReady: this.#evidenceReady(ids),
+				};
+			}
+			const remaining = this.#options.barrierMs - (this.#options.now() - start);
+			if (remaining <= 0) {
+				for (const token of ids) {
+					const record = token as AuditRecord;
+					if (
+						this.#pending.get(record.toolCallId) === record ||
+						record.completion
+					) {
+						record.abandoned = true;
+						releaseRecordPreImage(record);
+						this.#removeIfCurrent(record);
+					}
+				}
+				this.#signalChange();
+				this.#warnOnce(
+					"barrier-drop",
+					"omp-compact: audit barrier-drop (drain timed out; evidence dropped)",
+				);
+				return { settled: false, evidenceReady: false };
+			}
+			await this.#waitForChangeOrTimeout(remaining);
+		}
+	}
+
+	/**
+	 * Evidence is ready only when every record in the drain scope completed:
+	 * any abandoned record (terminal purge, dispose, same-id replacement)
+	 * left its evidence unpublished, so the run must not shake.
+	 */
+	#evidenceReady(ids: ReadonlySet<AuditRunToken>): boolean {
+		for (const token of ids) {
+			if ((token as AuditRecord).abandoned) return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Queues the `agent_end` bookkeeping of one logical run onto the serial
+	 * chain. `runIds`/`terminal` come from the synchronous `snapshot` at
+	 * emission; `work` (the adapter's end-run finalization) runs only when
+	 * this link is still current:
+	 *
+	 * - a link queued before `dispose()` (session switch/shutdown) short-
+	 *   circuits before its drain, so it neither delays the next session's
+	 *   chain nor touches a freshly created adapter;
+	 * - a switch landing mid-drain is re-checked after the barrier, so the
+	 *   old run's finalization cannot run against the new session's adapter.
+	 *
+	 * Resolves `true` only when the drain settled, `work` ran, and the run's
+	 * evidence is ready (nothing was purged or abandoned) — the post-run
+	 * auto-shake gate. Resolves `false` when the link was skipped, the drain
+	 * failed closed (timeout/teardown), or a terminal purge abandoned the
+	 * pending records: the run still finalized, but it must not shake.
+	 */
+	enqueueAgentEnd(
+		runIds: ReadonlySet<AuditRunToken>,
+		terminal: boolean,
+		work: () => void,
+	): Promise<boolean> {
+		const generation = this.#generation;
+		const link = this.#agentEndChain
+			.then(async () => {
+				if (generation !== this.#generation) return false;
+				const outcome = await this.barrier(runIds, terminal);
+				if (!outcome.settled || generation !== this.#generation) {
+					return false;
+				}
+				work();
+				return outcome.evidenceReady;
+			})
+			.catch(() => {
+				this.#warnOnce(
+					"chain-failed",
+					"omp-compact: audit chain-failed (agent_end link dropped)",
+				);
+				return false;
+			});
+		this.#agentEndChain = link;
+		return link;
+	}
+
+	/**
+	 * Abandons all records (session switch/shutdown) and invalidates every
+	 * queued `agent_end` link. Idempotent; a fresh session may keep using
+	 * this instance.
+	 */
+	dispose(): void {
+		this.#generation++;
+		for (const record of this.#records.values()) {
+			record.abandoned = true;
+			releaseRecordPreImage(record);
+		}
+		this.#pending.clear();
+		this.#records.clear();
+		this.#failedRecords.clear();
+		this.#targets.clear();
+		this.#signalChange();
+		// host-settings / post-turn-shake: session boundary may re-warn.
+		this.#warned.clear();
+	}
+
+	#register(
+		toolCallId: string,
+		init: {
+			// Payload is owned by this record, including through same-id replacement.
+			payload?: unknown;
+		},
+	): AuditRecord {
+		const previous = this.#records.get(toolCallId);
+		if (previous) {
+			// Superseded by a newer start under the same id (a nested xd://
+			// device dispatch reuses the model's toolCallId): exactly-once
+			// per toolCallId — the superseded record's in-flight completion
+			// is abandoned and can never publish, and teardown/dispose needs
+			// no separate reach into replaced records.
+			previous.abandoned = true;
+			releaseRecordPreImage(previous);
+			this.#releaseTarget(previous);
+		}
+		const record: AuditRecord = {
+			toolCallId,
+			capture: undefined,
+			completion: undefined,
+			payload: init.payload,
+			abandoned: false,
+			terminal: false,
+		};
+		// Map swap is last-candidate-wins for the shared toolCallId: only the
+		// new record is addressable. The previous entry was already abandoned
+		// above, so any in-flight completion it still holds settles without
+		// publishing alongside this successor (the supersede-overlap case).
+		this.#records.set(toolCallId, record);
+		this.#pending.set(toolCallId, record);
+		return record;
+	}
+
+	#claimTarget(
+		record: AuditRecord,
+		target: string,
+		declareAll = false,
+	): boolean {
+		if (record.abandoned && !declareAll) return false;
+		record.targets ??= new Set();
+		record.targets.add(target);
+		let claims = this.#targets.get(target);
+		if (claims?.size) {
+			for (const prior of claims) {
+				this.#failCompletion(prior);
+				releaseRecordPreImage(prior);
+			}
+			this.#failCompletion(record);
+		} else {
+			claims = new Set();
+		}
+		claims.add(record);
+		this.#targets.set(target, claims);
+		return !record.abandoned;
+	}
+
+	#releaseTarget(record: AuditRecord): void {
+		if (!record.targets) return;
+		for (const target of record.targets) {
+			const claims = this.#targets.get(target);
+			claims?.delete(record);
+			if (claims?.size === 0) this.#targets.delete(target);
+		}
+		record.targets = undefined;
+	}
+
+	#failCompletion(record: AuditRecord): void {
+		if (record.abandoned) return;
+		record.abandoned = true;
+		releaseRecordPreImage(record);
+		// Only an unended native call must keep its claim after abandonment.
+		if (record.completion) this.#releaseTarget(record);
+		if (!record.terminal) this.#failedRecords.add(record);
+	}
+
+	#trackCompletion(record: AuditRecord, completion: Promise<void>): void {
+		record.completion = completion;
+		completion.finally(() => {
+			this.#releaseTarget(record);
+			record.completion = undefined;
+			if (this.#records.get(record.toolCallId) === record) {
+				this.#records.delete(record.toolCallId);
+			}
+			this.#signalChange();
+		});
+		this.#signalChange();
+	}
+
+	/**
+	 * Wait for state change or timeout, whichever comes first.
+	 *
+	 * On early settle (change wins), `finish` dequeues itself from
+	 * `#changeWaiters` so the waiter queue never accumulates across drains.
+	 * The injectable `sleep` seam is intentionally cancel-free
+	 * (`(ms) => Promise<void>`): the underlying timer is left to expire and
+	 * resolves into an already-`done` `finish` that is a no-op. Bound: at most
+	 * one pending timer per drain, cleared within `barrierMs`. Do not widen
+	 * the seam to cancel that timer — the cost is bounded, not a leak.
+	 */
+	#waitForChangeOrTimeout(ms: number): Promise<void> {
+		return new Promise((resolve) => {
+			let done = false;
+			const finish = (): void => {
+				if (done) return;
+				done = true;
+				// Remove waiter from queue to prevent memory accumulation.
+				const index = this.#changeWaiters.indexOf(finish);
+				if (index >= 0) this.#changeWaiters.splice(index, 1);
+				resolve();
+			};
+			this.#changeWaiters.push(finish);
+			void this.#options.sleep(ms).then(finish, finish);
+		});
+	}
+
+	#signalChange(): void {
+		const waiters = this.#changeWaiters.splice(0);
+		for (const waiter of waiters) waiter();
+	}
+}

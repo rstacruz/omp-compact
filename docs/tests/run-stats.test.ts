@@ -1,0 +1,1143 @@
+import { beforeAll, describe, expect, test } from "bun:test";
+
+import type { Theme } from "../../.omp-plugin/theme-types";
+import type { Component } from "@oh-my-pi/pi-tui";
+
+import type {
+	RunStatsEvidence,
+	RunStatsResult,
+	StatsCarrier,
+} from "../../.omp-plugin/run-stats";
+import { loadStockPlugin } from "./test-stock-host";
+
+interface RunStatsModule {
+	STATS_MESSAGE_TYPE: string;
+	MAX_STATS_ACTIONS: number;
+	MAX_STATS_TOKENS: number;
+	MAX_STATS_DURATION_MS: number;
+	RunStats: new (
+		now?: () => number,
+	) => {
+		active: boolean;
+		readonly actions: number;
+		start(): void;
+		observeAssistantMessage(message: unknown): void;
+		recordTool(toolCallId: string): void;
+		recordToolError(toolCallId: string): void;
+		endRun(terminal: boolean): void;
+		abort(): void;
+		finalize(): RunStatsResult | undefined;
+		hasError(): boolean;
+		dispose(): void;
+	};
+	hasAssistantUsage(message: unknown): boolean;
+	formatTokens(value: number): string;
+	formatDuration(milliseconds: number): string;
+	formatClock(completedAt: number): string;
+	hitRateOf(sent: number, cacheRead: number): number;
+	statsLine(
+		result: RunStatsResult,
+		stats: {
+			enabled: boolean;
+			actions: boolean;
+			sent: boolean;
+			received: boolean;
+			cache: boolean;
+			time: boolean;
+			clock: boolean;
+		},
+		theme: Theme,
+		width?: number,
+	): string;
+	evidenceFromResult(result: RunStatsResult, runId: string): RunStatsEvidence;
+	resultFromEvidence(evidence: RunStatsEvidence): RunStatsResult;
+	isRunStatsEvidence(value: unknown): value is RunStatsEvidence;
+	createStatsCarrier(line: string): StatsCarrier;
+	statsMessageComponent(
+		details: RunStatsEvidence | undefined,
+		theme: Theme,
+	): Component | undefined;
+}
+
+let module: RunStatsModule;
+
+beforeAll(async () => {
+	// run-stats.ts imports ./config only as a type; @oh-my-pi deps resolve
+	// from the pinned runtime install through the plugin tree's node_modules
+	// link.
+	module = await loadStockPlugin<RunStatsModule>(
+		"run-stats.ts",
+		"run-stats-test",
+	);
+});
+
+const GREEN_SEP = "\u001b[38;2;164;215;52m";
+const WARNING_SEP = "\u001b[93m";
+
+function fakeTheme(): Theme {
+	return {
+		fg: (color: string, text: string) => {
+			const code =
+				color === "warning"
+					? "93"
+					: color === "dim"
+						? "2"
+						: color === "muted"
+							? "90"
+							: "0";
+			return `\x1b[${code}m${text}\x1b[0m`;
+		},
+	} as unknown as Theme;
+}
+
+const ALL_ON = {
+	enabled: true,
+	actions: true,
+	sent: true,
+	received: true,
+	cache: true,
+	time: true,
+	clock: true,
+} as const;
+
+function result(overrides: Partial<RunStatsResult> = {}): RunStatsResult {
+	return {
+		actions: 27,
+		sent: 28_153,
+		received: 1_300,
+		cacheRead: 480_200,
+		cacheWrite: 0,
+		hitRate: 0.9446,
+		durationMs: 4_832_000,
+		hasError: false,
+		messages: 2,
+		completedAt: 1_800_000_000_000,
+		...overrides,
+	};
+}
+
+function assistant(
+	overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+	return {
+		role: "assistant",
+		content: [
+			{ type: "text", text: "hello" },
+			{ type: "toolCall", id: "t1", name: "bash" },
+			{ type: "toolCall", id: "t2", name: "read" },
+		],
+		stopReason: "toolUse",
+		timestamp: 1_700_000_000_000,
+		usage: { input: 100, output: 50, cacheRead: 200, cacheWrite: 30 },
+		...overrides,
+	};
+}
+
+function stripAnsi(value: string): string {
+	return Bun.stripANSI(value);
+}
+
+describe("aggregation: unique finalized assistant messages", () => {
+	test("one message with several tool calls counts once, never per tool call", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.observeAssistantMessage(assistant());
+		stats.observeAssistantMessage(assistant()); // same completion redelivered
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.sent).toBe(100);
+		expect(result?.received).toBe(50);
+		expect(result?.cacheRead).toBe(200);
+		expect(result?.cacheWrite).toBe(30);
+		expect(result?.messages).toBe(1);
+	});
+
+	test("multiple completions accumulate per unique message", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.observeAssistantMessage(
+			assistant({
+				timestamp: 1,
+				usage: { input: 10, output: 5, cacheRead: 20, cacheWrite: 3 },
+			}),
+		);
+		stats.observeAssistantMessage(
+			assistant({
+				timestamp: 2,
+				usage: { input: 90, output: 45, cacheRead: 180, cacheWrite: 27 },
+			}),
+		);
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.sent).toBe(100);
+		expect(result?.received).toBe(50);
+		expect(result?.cacheRead).toBe(200);
+		expect(result?.cacheWrite).toBe(30);
+		expect(result?.messages).toBe(2);
+	});
+
+	test("malformed usage fields fail open to zero but still count the message", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.observeAssistantMessage(
+			assistant({ timestamp: 1, usage: { input: "x", output: NaN } }),
+		);
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.sent).toBe(0);
+		expect(result?.received).toBe(0);
+		expect(result?.messages).toBe(1);
+	});
+
+	test("missing or malformed usage objects are ignored entirely", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		// the only structurally valid usage message in this run
+		stats.observeAssistantMessage(
+			assistant({
+				timestamp: 1,
+				usage: { input: 100, output: 50, cacheRead: 200, cacheWrite: 30 },
+			}),
+		);
+		stats.observeAssistantMessage(
+			assistant({ timestamp: 2, usage: undefined }),
+		);
+		stats.observeAssistantMessage(assistant({ timestamp: 3, usage: null }));
+		stats.observeAssistantMessage(assistant({ timestamp: 4, usage: "nope" }));
+		stats.observeAssistantMessage(assistant({ timestamp: 5, usage: 42 }));
+		stats.observeAssistantMessage(assistant({ timestamp: 6, usage: [] }));
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.sent).toBe(100);
+		expect(result?.received).toBe(50);
+		expect(result?.messages).toBe(1);
+	});
+
+	test("legitimate zero-valued usage is counted once", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		const zero = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+		stats.observeAssistantMessage(assistant({ timestamp: 1, usage: zero }));
+		// redelivery of the same zero-usage completion still dedupes
+		stats.observeAssistantMessage(assistant({ timestamp: 1, usage: zero }));
+		// an empty usage object is legitimate too (provider omitted zeros)
+		stats.observeAssistantMessage(assistant({ timestamp: 2, usage: {} }));
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.sent).toBe(0);
+		expect(result?.received).toBe(0);
+		expect(result?.messages).toBe(2);
+	});
+
+	test("duplicate completion of the same message counts once", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		const message = assistant({ timestamp: 1 });
+		stats.observeAssistantMessage(message);
+		stats.observeAssistantMessage(message); // same completion redelivered
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.sent).toBe(100);
+		expect(result?.received).toBe(50);
+		expect(result?.messages).toBe(1);
+	});
+
+	test("messages observed outside a run are ignored", () => {
+		const stats = new module.RunStats();
+		stats.observeAssistantMessage(assistant());
+		stats.start();
+		stats.observeAssistantMessage(assistant({ timestamp: 1 }));
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.messages).toBe(1);
+		expect(result?.sent).toBe(100);
+	});
+
+	test("equal-length no-timestamp completions with different text are both counted", () => {
+		// Defect: the fallback key used only block count + summed text length +
+		// usage, so "abc" and "xyz" (same length, same usage, no timestamp)
+		// collided and the second completion was silently dropped.
+		const stats = new module.RunStats();
+		stats.start();
+		const usage = { input: 10, output: 5, cacheRead: 20, cacheWrite: 3 };
+		stats.observeAssistantMessage(
+			assistant({
+				timestamp: undefined,
+				stopReason: "stop",
+				content: [{ type: "text", text: "abc" }],
+				usage,
+			}),
+		);
+		stats.observeAssistantMessage(
+			assistant({
+				timestamp: undefined,
+				stopReason: "stop",
+				content: [{ type: "text", text: "xyz" }],
+				usage,
+			}),
+		);
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.messages).toBe(2);
+		expect(result?.sent).toBe(20);
+		expect(result?.received).toBe(10);
+		expect(result?.cacheRead).toBe(40);
+		expect(result?.cacheWrite).toBe(6);
+	});
+
+	test("redelivery of the same no-timestamp completion still counts once", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		const message = assistant({
+			timestamp: undefined,
+			stopReason: "stop",
+			content: [{ type: "text", text: "same body" }],
+			usage: { input: 10, output: 5, cacheRead: 20, cacheWrite: 3 },
+		});
+		stats.observeAssistantMessage(message);
+		// Fresh object, identical fields — streaming hosts redeliver this way.
+		stats.observeAssistantMessage({
+			...message,
+			content: [...(message.content as unknown[])],
+		});
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.messages).toBe(1);
+		expect(result?.sent).toBe(10);
+		expect(result?.received).toBe(5);
+	});
+
+	test("no-timestamp completions that differ only by stopReason are both counted", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		const base = {
+			timestamp: undefined as undefined,
+			content: [{ type: "text", text: "done" }],
+			usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
+		};
+		stats.observeAssistantMessage(assistant({ ...base, stopReason: "stop" }));
+		stats.observeAssistantMessage(assistant({ ...base, stopReason: "length" }));
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.messages).toBe(2);
+		expect(result?.sent).toBe(20);
+	});
+
+	test("no-timestamp completions that differ only by tool-call shape are both counted", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		const usage = { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 };
+		const prose = { type: "text", text: "calling tools" };
+		stats.observeAssistantMessage(
+			assistant({
+				timestamp: undefined,
+				stopReason: "toolUse",
+				content: [prose, { type: "toolCall", id: "t1", name: "bash" }],
+				usage,
+			}),
+		);
+		stats.observeAssistantMessage(
+			assistant({
+				timestamp: undefined,
+				stopReason: "toolUse",
+				content: [prose, { type: "toolCall", id: "t2", name: "read" }],
+				usage,
+			}),
+		);
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.messages).toBe(2);
+		expect(result?.sent).toBe(20);
+	});
+
+	test("responseId takes priority over equal timestamps and still dedups redelivery", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		const usage = { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 };
+		stats.observeAssistantMessage(
+			assistant({
+				responseId: "resp_a",
+				timestamp: 99,
+				content: [{ type: "text", text: "first" }],
+				usage,
+			}),
+		);
+		stats.observeAssistantMessage(
+			assistant({
+				responseId: "resp_b",
+				timestamp: 99,
+				content: [{ type: "text", text: "second" }],
+				usage,
+			}),
+		);
+		// Redelivery of resp_a as a fresh object must not double-count.
+		stats.observeAssistantMessage(
+			assistant({
+				responseId: "resp_a",
+				timestamp: 99,
+				content: [{ type: "text", text: "first" }],
+				usage,
+			}),
+		);
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.messages).toBe(2);
+		expect(result?.sent).toBe(20);
+	});
+
+	test("missing responseId falls back cleanly when timestamps differ", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.observeAssistantMessage(
+			assistant({
+				responseId: undefined,
+				timestamp: 1,
+				usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
+			}),
+		);
+		stats.observeAssistantMessage(
+			assistant({
+				responseId: undefined,
+				timestamp: 2,
+				usage: { input: 90, output: 45, cacheRead: 0, cacheWrite: 0 },
+			}),
+		);
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.messages).toBe(2);
+		expect(result?.sent).toBe(100);
+		expect(result?.received).toBe(50);
+	});
+
+	test("same-timestamp no-responseId completions that differ only by model are both counted", () => {
+		// Production path gap: tier 2 used timestamp+stopReason+usage only.
+		// Host identity (turn-persistence.ts sessionMessagePersistenceKey) also
+		// discriminates on provider+model — two parallel subagent finals in the
+		// same millisecond without responseId otherwise collide and under-count.
+		const stats = new module.RunStats();
+		stats.start();
+		const base = {
+			responseId: undefined as undefined,
+			timestamp: 1_700_000_000_000,
+			stopReason: "error",
+			provider: "anthropic",
+			content: [] as unknown[],
+			usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+		};
+		stats.observeAssistantMessage(assistant({ ...base, model: "claude-a" }));
+		stats.observeAssistantMessage(assistant({ ...base, model: "claude-b" }));
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.messages).toBe(2);
+		expect(result?.sent).toBe(0);
+		expect(result?.received).toBe(0);
+	});
+
+	test("same-timestamp no-responseId completions that differ only by provider are both counted", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		const base = {
+			responseId: undefined as undefined,
+			timestamp: 1_700_000_000_000,
+			stopReason: "error",
+			model: "shared-name",
+			content: [] as unknown[],
+			usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+		};
+		stats.observeAssistantMessage(assistant({ ...base, provider: "openai" }));
+		stats.observeAssistantMessage(
+			assistant({ ...base, provider: "anthropic" }),
+		);
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.messages).toBe(2);
+		expect(result?.sent).toBe(0);
+	});
+
+	test("same-timestamp same model/provider redelivery without responseId still counts once", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		const message = assistant({
+			responseId: undefined,
+			timestamp: 1_700_000_000_000,
+			stopReason: "error",
+			provider: "anthropic",
+			model: "claude-a",
+			content: [],
+			usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+		});
+		stats.observeAssistantMessage(message);
+		stats.observeAssistantMessage({ ...message });
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.messages).toBe(1);
+	});
+});
+
+describe("hasAssistantUsage structural guard", () => {
+	test("requires a real usage object; missing/null/primitives/arrays fail", () => {
+		expect(module.hasAssistantUsage(assistant())).toBe(true);
+		expect(module.hasAssistantUsage(assistant({ usage: {} }))).toBe(true);
+		expect(module.hasAssistantUsage(assistant({ usage: { input: 0 } }))).toBe(
+			true,
+		);
+		expect(module.hasAssistantUsage(assistant({ usage: undefined }))).toBe(
+			false,
+		);
+		expect(module.hasAssistantUsage(assistant({ usage: null }))).toBe(false);
+		expect(module.hasAssistantUsage(assistant({ usage: "nope" }))).toBe(false);
+		expect(module.hasAssistantUsage(assistant({ usage: 42 }))).toBe(false);
+		expect(module.hasAssistantUsage(assistant({ usage: [] }))).toBe(false);
+		expect(module.hasAssistantUsage(undefined)).toBe(false);
+		expect(module.hasAssistantUsage(null)).toBe(false);
+		expect(module.hasAssistantUsage("assistant")).toBe(false);
+	});
+});
+
+describe("cache math", () => {
+	test("hit rate is cacheRead over sent + cacheRead", () => {
+		expect(module.hitRateOf(28_153, 480_200)).toBeCloseTo(0.94462, 4);
+	});
+
+	test("zero denominators yield zero, never NaN", () => {
+		expect(module.hitRateOf(0, 0)).toBe(0);
+		expect(module.hitRateOf(0, 100)).toBe(1);
+		expect(module.hitRateOf(100, 0)).toBe(0);
+	});
+
+	test("cacheWrite never inflates sent, hits, or hit rate", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.observeAssistantMessage(
+			assistant({
+				timestamp: 1,
+				usage: { input: 100, output: 50, cacheRead: 200, cacheWrite: 9_000 },
+			}),
+		);
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.sent).toBe(100);
+		expect(result?.cacheRead).toBe(200);
+		expect(result?.cacheWrite).toBe(9_000);
+		expect(result?.hitRate).toBeCloseTo(200 / 300, 10);
+	});
+});
+
+describe("formatting and rounding", () => {
+	test("formatTokens magnitudes and rounding", () => {
+		expect(module.formatTokens(0)).toBe("0");
+		expect(module.formatTokens(5)).toBe("5");
+		expect(module.formatTokens(950)).toBe("950");
+		expect(module.formatTokens(999)).toBe("999");
+		expect(module.formatTokens(1_000)).toBe("1k");
+		expect(module.formatTokens(1_300)).toBe("1.3k");
+		expect(module.formatTokens(28_153)).toBe("28.2k");
+		expect(module.formatTokens(480_200)).toBe("480.2k");
+		expect(module.formatTokens(1_000_000)).toBe("1M");
+		expect(module.formatTokens(1_234_567)).toBe("1.2M");
+		expect(module.formatTokens(3_100_000_000)).toBe("3.1B");
+		expect(module.formatTokens(-5)).toBe("0");
+		expect(module.formatTokens(Number.NaN)).toBe("0");
+	});
+
+	test("formatTokens promotes a value that rounds up into the next unit", () => {
+		expect(module.formatTokens(999.6)).toBe("1k");
+		expect(module.formatTokens(999_949)).toBe("999.9k");
+		expect(module.formatTokens(999_950)).toBe("1M");
+		expect(module.formatTokens(999_950_000)).toBe("1B");
+	});
+
+	test("formatDuration units", () => {
+		expect(module.formatDuration(0)).toBe("0s");
+		expect(module.formatDuration(500)).toBe("1s");
+		expect(module.formatDuration(32_000)).toBe("32s");
+		expect(module.formatDuration(65_000)).toBe("1m 5s");
+		expect(module.formatDuration(3_600_000)).toBe("1h 0m 0s");
+		expect(module.formatDuration(4_832_000)).toBe("1h 20m 32s");
+		expect(module.formatDuration(-1_000)).toBe("0s");
+	});
+
+	test("formatClock pads to hh:mm in local time", () => {
+		// Built from local parts so the expectation holds in any zone: the row
+		// reports the user's wall clock, not UTC.
+		const at = new Date(2026, 7, 28, 16, 33, 7, 500);
+		expect(module.formatClock(at.getTime())).toBe("16:33");
+		const early = new Date(2026, 7, 28, 6, 5, 0, 0);
+		expect(module.formatClock(early.getTime())).toBe("06:05");
+		const midnight = new Date(2026, 7, 28, 0, 0, 0, 0);
+		expect(module.formatClock(midnight.getTime())).toBe("00:00");
+		// No completion instant is no evidence of a completion time: the row
+		// stays silent instead of reporting the epoch.
+		expect(module.formatClock(0)).toBe("");
+		expect(module.formatClock(-1)).toBe("");
+		expect(module.formatClock(Number.NaN)).toBe("");
+	});
+
+	test("full row renders the spec format", () => {
+		const at = new Date(2026, 7, 28, 16, 33, 0, 0);
+		const line = module.statsLine(
+			result({ completedAt: at.getTime() }),
+			ALL_ON,
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe(
+			"[ 27 actions · 508.4k prompt (28.2k fresh · 480.2k cached) · 1.3k received · 1h 20m 32s ] — 16:33",
+		);
+	});
+
+	test("the clock rides outside the brackets in the compact-row grey", () => {
+		const at = new Date(2026, 7, 28, 16, 33, 0, 0);
+		const line = module.statsLine(
+			result({ completedAt: at.getTime() }),
+			ALL_ON,
+			fakeTheme(),
+		);
+		// `]` closes in dim, the dash stays dim, and the clock switches to the
+		// muted grey the compact rows give a file name: a step up from the dim
+		// body without going white.
+		expect(line).toContain(
+			"\u001b[2m]\u001b[0m\u001b[2m — \u001b[0m\u001b[90m16:33",
+		);
+		expect(line).not.toContain("\u001b[0m16:33");
+	});
+
+	test("the clock is off when its own toggle is off", () => {
+		const line = module.statsLine(
+			result(),
+			{ ...ALL_ON, clock: false },
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe(
+			"[ 27 actions · 508.4k prompt (28.2k fresh · 480.2k cached) · 1.3k received · 1h 20m 32s ]",
+		);
+	});
+
+	test("no segments means no row to hang the clock beside", () => {
+		const line = module.statsLine(
+			result(),
+			{
+				enabled: true,
+				actions: false,
+				sent: false,
+				received: false,
+				cache: false,
+				time: false,
+				clock: true,
+			},
+			fakeTheme(),
+		);
+		expect(line).toBe("");
+	});
+});
+
+describe("statsLine field subsets and gating", () => {
+	test("actions + time only", () => {
+		const line = module.statsLine(
+			result(),
+			{
+				enabled: true,
+				actions: true,
+				sent: false,
+				received: false,
+				cache: false,
+				time: true,
+				clock: false,
+			},
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe("[ 27 actions · 1h 20m 32s ]");
+	});
+
+	test("single segment has no separators", () => {
+		const line = module.statsLine(
+			result(),
+			{
+				enabled: true,
+				actions: true,
+				sent: false,
+				received: false,
+				cache: false,
+				time: false,
+				clock: false,
+			},
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe("[ 27 actions ]");
+	});
+
+	test("stats disabled renders nothing", () => {
+		const line = module.statsLine(
+			result(),
+			{ ...ALL_ON, enabled: false },
+			fakeTheme(),
+		);
+		expect(line).toBe("");
+	});
+
+	test("enabled with no segments renders nothing", () => {
+		const line = module.statsLine(
+			result(),
+			{
+				enabled: true,
+				actions: false,
+				sent: false,
+				received: false,
+				cache: false,
+				time: false,
+				clock: false,
+			},
+			fakeTheme(),
+		);
+		expect(line).toBe("");
+	});
+
+	test("width truncation stays transparent and clips instead of wrapping", () => {
+		const line = module.statsLine(result(), ALL_ON, fakeTheme(), 30);
+		expect(stripAnsi(line).length).toBeLessThanOrEqual(30);
+		expect(line).not.toContain("\u001b[48;");
+	});
+});
+
+describe("statsLine prompt segment: sent × cache matrix", () => {
+	const noClock = { ...ALL_ON, clock: false };
+
+	test("both on: prompt total with the fresh and cached split", () => {
+		const line = module.statsLine(result(), noClock, fakeTheme());
+		expect(stripAnsi(line)).toBe(
+			"[ 27 actions · 508.4k prompt (28.2k fresh · 480.2k cached) · 1.3k received · 1h 20m 32s ]",
+		);
+	});
+
+	test("sent on, cache off: fresh input only, no cache mention", () => {
+		const line = module.statsLine(
+			result(),
+			{ ...noClock, cache: false },
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe(
+			"[ 27 actions · 28.2k fresh · 1.3k received · 1h 20m 32s ]",
+		);
+	});
+
+	test("sent off, cache on: cached amount with its share, no prompt total", () => {
+		const line = module.statsLine(
+			result(),
+			{ ...noClock, sent: false },
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe(
+			"[ 27 actions · 480.2k cached (94%) · 1.3k received · 1h 20m 32s ]",
+		);
+	});
+
+	test("both off: no prompt segment at all", () => {
+		const line = module.statsLine(
+			result(),
+			{ ...noClock, sent: false, cache: false },
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe("[ 27 actions · 1.3k received · 1h 20m 32s ]");
+	});
+
+	test("cold run: zero cacheRead keeps the segment as total with (0 cached)", () => {
+		const line = module.statsLine(
+			result({ sent: 54_610, received: 11_100, cacheRead: 0, hitRate: 0 }),
+			noClock,
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe(
+			"[ 27 actions · 54.6k prompt (0 cached) · 11.1k received · 1h 20m 32s ]",
+		);
+	});
+
+	test("zero fresh with positive cacheRead renders the cached-only split", () => {
+		const line = module.statsLine(
+			result({ sent: 0, cacheRead: 1_349_467, hitRate: 1 }),
+			noClock,
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe(
+			"[ 27 actions · 1.3M prompt (1.3M cached) · 1.3k received · 1h 20m 32s ]",
+		);
+	});
+
+	test("all-zero run keeps the segment as 0 prompt, never divides by zero", () => {
+		const line = module.statsLine(
+			result({ sent: 0, received: 0, cacheRead: 0, hitRate: 0 }),
+			noClock,
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe(
+			"[ 27 actions · 0 prompt · 0 received · 1h 20m 32s ]",
+		);
+	});
+
+	test("cache-only zero case keeps the segment as 0 cached (0%)", () => {
+		const line = module.statsLine(
+			result({ sent: 0, cacheRead: 0, hitRate: 0 }),
+			{ ...noClock, sent: false },
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe(
+			"[ 27 actions · 0 cached (0%) · 1.3k received · 1h 20m 32s ]",
+		);
+	});
+
+	test("sent-only zero case keeps the segment as 0 fresh", () => {
+		const line = module.statsLine(
+			result({ sent: 0 }),
+			{ ...noClock, cache: false },
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe(
+			"[ 27 actions · 0 fresh · 1.3k received · 1h 20m 32s ]",
+		);
+	});
+
+	test("provider cache creations join the prompt tally as written", () => {
+		// Real recorded run: Anthropic-family cacheWrite of almost a million
+		// tokens — the split must close against the total (1.3M + 5.4M +
+		// 950k = 7.7M) instead of silently dropping the third bucket.
+		const line = module.statsLine(
+			result({
+				actions: 84,
+				sent: 1_335_596,
+				received: 107_275,
+				cacheRead: 5_376_523,
+				cacheWrite: 950_005,
+				hitRate: 0.8010172346467636,
+				durationMs: 2_136_502,
+			}),
+			noClock,
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe(
+			"[ 84 actions · 7.7M prompt (1.3M fresh · 5.4M cached · 950k written) · 107.3k received · 35m 37s ]",
+		);
+	});
+
+	test("cold run with cache creations keeps the annotation and the write", () => {
+		const line = module.statsLine(
+			result({
+				sent: 54_610,
+				received: 11_100,
+				cacheRead: 0,
+				cacheWrite: 950_005,
+				hitRate: 0,
+			}),
+			noClock,
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe(
+			"[ 27 actions · 1M prompt (0 cached · 950k written) · 11.1k received · 1h 20m 32s ]",
+		);
+	});
+
+	test("run with sent=0, cacheRead=0, cacheWrite>0 preserves the written annotation", () => {
+		const line = module.statsLine(
+			result({
+				sent: 0,
+				received: 11_100,
+				cacheRead: 0,
+				cacheWrite: 950_005,
+				hitRate: 0,
+			}),
+			noClock,
+			fakeTheme(),
+		);
+		expect(stripAnsi(line)).toBe(
+			"[ 27 actions · 950k prompt (0 cached · 950k written) · 11.1k received · 1h 20m 32s ]",
+		);
+	});
+});
+
+describe("statsLine coloring", () => {
+	test("clean run uses the fixed green separators, dim values and brackets", () => {
+		const line = module.statsLine(
+			result({ hasError: false }),
+			ALL_ON,
+			fakeTheme(),
+		);
+		expect(line).toContain(GREEN_SEP);
+		expect(line).not.toContain(WARNING_SEP);
+		// values and brackets stay dim neutral
+		expect(line).toContain("\u001b[2m[");
+		expect(line).toContain("\u001b[2m27 actions");
+		expect(line).toContain("\u001b[2m]");
+	});
+
+	test("failed tool executions switch separators to theme warning", () => {
+		const line = module.statsLine(
+			result({ hasError: true }),
+			ALL_ON,
+			fakeTheme(),
+		);
+		expect(line).toContain(WARNING_SEP);
+		expect(line).not.toContain(GREEN_SEP);
+		expect(stripAnsi(line)).toBe(
+			`[ 27 actions · 508.4k prompt (28.2k fresh · 480.2k cached) · 1.3k received · 1h 20m 32s ] — ${module.formatClock(result().completedAt)}`,
+		);
+	});
+});
+
+describe("logical run lifecycle", () => {
+	test("duration spans agent_start through terminal agent_end", () => {
+		let clock = 1_000;
+		const stats = new module.RunStats(() => clock);
+		stats.start();
+		clock = 1_000 + 4_832_000;
+		stats.endRun(true);
+		expect(stats.finalize()?.durationMs).toBe(4_832_000);
+		expect(stats.finalize()?.completedAt).toBe(4_833_000);
+	});
+
+	test("continuations keep the same logical run and accumulate", () => {
+		let clock = 0;
+		const stats = new module.RunStats(() => clock);
+		stats.start();
+		stats.observeAssistantMessage(
+			assistant({
+				timestamp: 1,
+				usage: { input: 10, output: 5, cacheRead: 20, cacheWrite: 0 },
+			}),
+		);
+		clock = 5_000;
+		stats.endRun(false); // willContinue
+		stats.start(); // continuation agent_start must not reset
+		stats.observeAssistantMessage(
+			assistant({
+				timestamp: 2,
+				usage: { input: 90, output: 45, cacheRead: 180, cacheWrite: 0 },
+			}),
+		);
+		clock = 10_000;
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.sent).toBe(100);
+		expect(result?.received).toBe(50);
+		expect(result?.messages).toBe(2);
+		expect(result?.durationMs).toBe(10_000);
+	});
+
+	test("the next user prompt starts a fresh run", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.observeAssistantMessage(
+			assistant({
+				timestamp: 1,
+				usage: { input: 100, output: 50, cacheRead: 200, cacheWrite: 0 },
+			}),
+		);
+		stats.endRun(true);
+		stats.start();
+		stats.observeAssistantMessage(
+			assistant({
+				timestamp: 2,
+				usage: { input: 7, output: 3, cacheRead: 0, cacheWrite: 0 },
+			}),
+		);
+		stats.endRun(true);
+		expect(stats.finalize()?.sent).toBe(7);
+		expect(stats.finalize()?.messages).toBe(1);
+	});
+
+	test("an interrupted run without a terminal end produces no result", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.observeAssistantMessage(assistant());
+		stats.start(); // new run while previous never ended (abort path)
+		stats.endRun(true);
+		expect(stats.finalize()?.sent).toBe(0);
+		expect(stats.finalize()?.messages).toBe(0);
+	});
+
+	test("finalize is idempotent and returns the same locked result", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.observeAssistantMessage(assistant({ timestamp: 1 }));
+		stats.endRun(true);
+		const first = stats.finalize();
+		const second = stats.finalize();
+		expect(first).toBe(second);
+		expect(first?.messages).toBe(1);
+	});
+
+	test("tool errors mark the run dirty without affecting token math", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.recordToolError("bash-1");
+		stats.recordToolError("bash-1"); // duplicate id still one error
+		stats.observeAssistantMessage(assistant({ timestamp: 1 }));
+		stats.endRun(true);
+		expect(stats.hasError()).toBe(true);
+		expect(stats.finalize()?.hasError).toBe(true);
+		expect(stats.finalize()?.sent).toBe(100);
+	});
+
+	test("recordTool dedups distinct executions by toolCallId", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.recordTool("bash-1");
+		stats.recordTool("bash-1"); // redelivery is one execution
+		stats.recordTool("read-2");
+		stats.recordTool(""); // empty/provisional ids never count
+		expect(stats.actions).toBe(2);
+		stats.endRun(true);
+		expect(stats.finalize()?.actions).toBe(2);
+	});
+
+	test("actions accumulate across continuations and reset on a fresh run", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.recordTool("a");
+		stats.endRun(false); // willContinue
+		stats.start(); // continuation keeps the run open
+		stats.recordTool("a"); // redelivered id still counts once
+		stats.recordTool("b");
+		stats.endRun(true);
+		expect(stats.finalize()?.actions).toBe(2);
+		stats.start(); // next user prompt
+		stats.recordTool("c");
+		stats.endRun(true);
+		expect(stats.finalize()?.actions).toBe(1);
+	});
+
+	test("abort discards the open run: no result, no leak into the next run", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.recordTool("bash-1");
+		stats.recordToolError("bash-1");
+		stats.observeAssistantMessage(assistant({ timestamp: 1 }));
+		stats.endRun(false); // continuation arm
+		stats.abort(); // terminal end WITHOUT an answer (abort/error)
+		expect(stats.finalize()).toBeUndefined();
+		expect(stats.active).toBe(false);
+		// the next run starts clean: the continuation flag was cleared too
+		stats.start();
+		stats.observeAssistantMessage(
+			assistant({ timestamp: 2, usage: { input: 7, output: 3 } }),
+		);
+		stats.endRun(true);
+		const result = stats.finalize();
+		expect(result?.actions).toBe(0);
+		expect(result?.sent).toBe(7);
+		expect(result?.messages).toBe(1);
+		expect(result?.hasError).toBe(false);
+		// a stale abort after a locked result never erases it
+		stats.abort();
+		expect(stats.finalize()).toBe(result);
+	});
+
+	test("dispose drops partial state; a later run starts clean", () => {
+		const stats = new module.RunStats();
+		stats.start();
+		stats.observeAssistantMessage(assistant({ timestamp: 1 }));
+		stats.dispose();
+		expect(stats.active).toBe(false);
+		expect(stats.finalize()).toBeUndefined();
+		stats.start();
+		stats.endRun(true);
+		expect(stats.finalize()?.messages).toBe(0);
+	});
+});
+
+describe("persisted evidence", () => {
+	test("round-trips through evidence", () => {
+		const source = result();
+		const evidence = module.evidenceFromResult(source, "omp-compact-run-1");
+		expect(evidence.version).toBe(1);
+		expect(evidence.runId).toBe("omp-compact-run-1");
+		expect(module.resultFromEvidence(evidence)).toEqual(source);
+		expect(module.isRunStatsEvidence(evidence)).toBe(true);
+	});
+
+	test("cacheWrite survives in evidence but never as a hit", () => {
+		const evidence = module.evidenceFromResult(
+			result({ cacheWrite: 950_005 }),
+			"r1",
+		);
+		expect(evidence.cacheWrite).toBe(950_005);
+		expect(evidence.hitRate).toBeCloseTo(0.9446, 4);
+	});
+
+	test("rejects malformed, unbounded, or foreign evidence", () => {
+		const good = module.evidenceFromResult(result(), "r1");
+		expect(module.isRunStatsEvidence({ ...good, version: 2 })).toBe(false);
+		expect(module.isRunStatsEvidence({ ...good, runId: "" })).toBe(false);
+		expect(module.isRunStatsEvidence({ ...good, runId: "x".repeat(200) })).toBe(
+			false,
+		);
+		expect(module.isRunStatsEvidence({ ...good, actions: -1 })).toBe(false);
+		expect(
+			module.isRunStatsEvidence({
+				...good,
+				actions: module.MAX_STATS_ACTIONS + 1,
+			}),
+		).toBe(false);
+		expect(
+			module.isRunStatsEvidence({ ...good, sent: module.MAX_STATS_TOKENS + 1 }),
+		).toBe(false);
+		expect(module.isRunStatsEvidence({ ...good, hitRate: 1.1 })).toBe(false);
+		expect(module.isRunStatsEvidence({ ...good, hitRate: Number.NaN })).toBe(
+			false,
+		);
+		expect(
+			module.isRunStatsEvidence({
+				...good,
+				durationMs: module.MAX_STATS_DURATION_MS + 1,
+			}),
+		).toBe(false);
+		expect(module.isRunStatsEvidence({ ...good, hasError: "yes" })).toBe(false);
+		expect(
+			module.isRunStatsEvidence({
+				...good,
+				completedAt: Number.POSITIVE_INFINITY,
+			}),
+		).toBe(false);
+		expect(module.isRunStatsEvidence(undefined)).toBe(false);
+		expect(module.isRunStatsEvidence("omp-compact-stats")).toBe(false);
+	});
+
+	test("evidence clamps out-of-range result values", () => {
+		const evidence = module.evidenceFromResult(
+			result({ hitRate: 5, hasError: 1 as never }),
+			"r1",
+		);
+		expect(evidence.hitRate).toBe(1);
+		expect(evidence.hasError).toBe(false);
+	});
+});
+
+describe("transcript carrier", () => {
+	test("carrier is a foldable omp-compact custom message", () => {
+		const carrier = module.createStatsCarrier("[ 1 actions ]");
+		expect(carrier.message.customType).toBe(module.STATS_MESSAGE_TYPE);
+		expect(carrier.message.customType.startsWith("omp-compact-")).toBe(true);
+	});
+
+	test("carrier renders the line and truncates at narrow widths", () => {
+		const line =
+			"[ 27 actions · 508.4k prompt (28.2k fresh · 480.2k cached) · 1.3k received · 1h 20m 32s ]";
+		const carrier = module.createStatsCarrier(line);
+		expect(carrier.render(120)).toEqual([line]);
+		const narrow = carrier.render(20);
+		expect(narrow).toHaveLength(1);
+		expect(Bun.stripANSI(narrow[0] ?? "").length).toBeLessThanOrEqual(20);
+	});
+});
+
+describe("statsMessageComponent", () => {
+	test("renders valid evidence, ignores invalid", () => {
+		const component = module.statsMessageComponent(
+			module.evidenceFromResult(result(), "r1"),
+			fakeTheme(),
+		);
+		expect(component).toBeDefined();
+		const rows = component?.render(120) ?? [];
+		expect(Bun.stripANSI(rows.join("\n"))).toContain("27 actions");
+		expect(Bun.stripANSI(rows.join("\n"))).toContain("28.2k fresh");
+		expect(
+			module.statsMessageComponent(undefined, fakeTheme()),
+		).toBeUndefined();
+	});
+});

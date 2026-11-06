@@ -1,0 +1,85 @@
+{
+	"rows": [
+		"• read host/test.md",
+		"• read host-docs",
+		"• read host-docs/README.md",
+		"• read host-docs/rpc.md",
+		"• read host-docs/tui-options.md",
+		"• read host-docs/commands.md",
+		"• read host-docs/models.md",
+		"• read host-docs/sessions-on-disk.md",
+		"• read host-docs/messages.md",
+		"• read host-docs/events-statuses.md",
+		"• read host-docs/cli.md",
+		"• read host-docs/events-statuses.md:1-20",
+		"• read plugin",
+		"• todo",
+		"• bash: git status --porcelain && echo \"---BRANCH---\" && git branch --show-current · 0.4s",
+		"• todo",
+		"• git add -A",
+		"• git commit -m chore: safe commit of dirty tree before test run --quiet",
+		"• git log --oneline -1",
+		"• todo",
+		"• bash: stat -f \"%m %N\" /repo/host-docs/*.md | sort -n · 0.0s",
+		"• bash: cd /repo/host-docs && for f in README.md rpc.md tui-options.md commands.md models.md sessions-on-disk.md messag…",
+		"• bash: date '+%Y-%m-%d %H:%M:%S %Z (%z)' · 0.0s",
+		"• write: host-docs/example.md",
+		"• write: host/count-omp.sh",
+		"• bash: ./count-omp.sh · 3.5s",
+		"• todo",
+		"• todo",
+		"• todo",
+		"• todo",
+		"✗ bash: rm /repo/host-docs/example.md /repo/host/count-omp.sh && echo \"deleted\" && ls /abs/truncated… · exit 2 · 0.1s ·…",
+		"• todo",
+		"• bash: git status --porcelain; echo \"---\"; git log --oneline -1 · 0.8s",
+		"[ 31 actions · 775.1k prompt (54.6k fresh · 720.5k cached) · 11.1k received · 0s ]",
+		"<answer 1>"
+	],
+	"carriers": [
+		{
+			"customType": "omp-compact-git",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_5",
+				"subcommand": "add",
+				"text": "git add -A",
+				"isError": false,
+				"records": [
+					{
+						"subcommand": "add",
+						"text": "git add -A",
+						"isError": false
+					},
+					{
+						"subcommand": "commit",
+						"text": "git commit -m chore: safe commit of dirty tree before test run --quiet",
+						"isError": false
+					},
+					{
+						"subcommand": "log",
+						"text": "git log --oneline -1",
+						"isError": false
+					}
+				]
+			}
+		},
+		{
+			"customType": "omp-compact-stats",
+			"data": {
+				"version": 1,
+				"runId": "omp-compact-run-1",
+				"actions": 31,
+				"sent": 54610,
+				"received": 11120,
+				"cacheRead": 720512,
+				"cacheWrite": 0,
+				"hitRate": 0.9295465746037398,
+				"durationMs": 0,
+				"hasError": true,
+				"messages": 16,
+				"completedAt": 0
+			}
+		}
+	]
+}

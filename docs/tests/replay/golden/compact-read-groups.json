@@ -1,0 +1,190 @@
+{
+	"rows": [
+		"• hub",
+		"• edit: plugin/index.integration.test.ts +1|1",
+		"• edit: plugin/index.integration.test.ts +0|1",
+		"• edit: plugin/index.integration.test.ts +0|1",
+		"• edit: plugin/index.integration.test.ts +3|0",
+		"• edit: plugin/index.integration.test.ts +3|0",
+		"• edit: plugin/runtime-adapter.ts +1|1",
+		"• edit: plugin/runtime-adapter.ts +0|1",
+		"• edit: plugin/runtime-adapter.ts +0|1",
+		"• edit: plugin/runtime-adapter.ts +2|0",
+		"• edit: plugin/runtime-adapter.ts +1|0",
+		"• edit: plugin/runtime-adapter.ts +1|0",
+		"• edit: plugin/runtime-adapter.ts +1|1",
+		"• edit: plugin/runtime-adapter.ts +2|0",
+		"• edit: plugin/runtime-adapter.ts +3|0",
+		"• grep: ? · in plugin/runtime-adapter.ts · 0 matches"
+	],
+	"carriers": [
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_2",
+				"toolName": "edit",
+				"path": "/repo/plugin/index.integration.test.ts",
+				"added": 1,
+				"removed": 1,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_3",
+				"toolName": "edit",
+				"path": "/repo/plugin/index.integration.test.ts",
+				"added": 0,
+				"removed": 1,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_4",
+				"toolName": "edit",
+				"path": "/repo/plugin/index.integration.test.ts",
+				"added": 0,
+				"removed": 1,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_5",
+				"toolName": "edit",
+				"path": "/repo/plugin/index.integration.test.ts",
+				"added": 3,
+				"removed": 0,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_6",
+				"toolName": "edit",
+				"path": "/repo/plugin/index.integration.test.ts",
+				"added": 3,
+				"removed": 0,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_7",
+				"toolName": "edit",
+				"path": "/repo/plugin/runtime-adapter.ts",
+				"added": 1,
+				"removed": 1,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_8",
+				"toolName": "edit",
+				"path": "/repo/plugin/runtime-adapter.ts",
+				"added": 0,
+				"removed": 1,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_9",
+				"toolName": "edit",
+				"path": "/repo/plugin/runtime-adapter.ts",
+				"added": 0,
+				"removed": 1,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_10",
+				"toolName": "edit",
+				"path": "/repo/plugin/runtime-adapter.ts",
+				"added": 2,
+				"removed": 0,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_11",
+				"toolName": "edit",
+				"path": "/repo/plugin/runtime-adapter.ts",
+				"added": 1,
+				"removed": 0,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_12",
+				"toolName": "edit",
+				"path": "/repo/plugin/runtime-adapter.ts",
+				"added": 1,
+				"removed": 0,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_13",
+				"toolName": "edit",
+				"path": "/repo/plugin/runtime-adapter.ts",
+				"added": 1,
+				"removed": 1,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_14",
+				"toolName": "edit",
+				"path": "/repo/plugin/runtime-adapter.ts",
+				"added": 2,
+				"removed": 0,
+				"exact": true
+			}
+		},
+		{
+			"customType": "omp-compact-write",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_15",
+				"toolName": "edit",
+				"path": "/repo/plugin/runtime-adapter.ts",
+				"added": 3,
+				"removed": 0,
+				"exact": true
+			}
+		}
+	]
+}

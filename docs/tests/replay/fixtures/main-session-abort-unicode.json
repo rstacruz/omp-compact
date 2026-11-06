@@ -1,0 +1,1201 @@
+{
+	"meta": {
+		"id": "main-session-abort-unicode",
+		"source": "<session>",
+		"sourceKind": "session-jsonl",
+		"cwd": "/repo",
+		"mode": "clear",
+		"stats": false,
+		"terminal": "aborted",
+		"events": 62,
+		"tools": 23,
+		"toolNames": {
+			"read": 11,
+			"bash": 6,
+			"todo": 2,
+			"grep": 2,
+			"glob": 1,
+			"ask": 1,
+			"write": 1
+		},
+		"redaction": "session source -> <session>; absolute repo paths -> /repo + canonical namespaces (plugin|host|host-source|host-docs|work); other absolute roots -> /abs/N; worker labels -> peer-N; toolCallIds -> call_N (fc_ composite shape kept); secrets/emails/hashes -> <placeholders>; assistant prose -> deterministic <answer N>/dropped; shaken markers -> [shaken]; strings capped (args 200, result 300, arrays 5); entry envelope fields (ids/timestamps) dropped",
+		"note": "aborted terminal (full log); Unicode; ask native-live shapes; clear mode; compaction labels present in source"
+	},
+	"events": [
+		{
+			"t": "run_start"
+		},
+		{
+			"t": "run_end",
+			"stop": "aborted"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_1|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "skill://decision-record"
+			},
+			"intent": "Reading decision-recording skill"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_1|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 2610 chars]"
+					}
+				],
+				"details": {
+					"resolvedPath": "/home/.omp/agent/skills/decision-record/SKILL.md",
+					"contentType": "text/markdown",
+					"displayContent": {
+						"text": "[output 2603 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+48 items>"]
+					},
+					"meta": {
+						"source": {
+							"type": "internal",
+							"value": "skill://decision-record"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 13970,
+				"output": 140,
+				"cacheRead": 80000,
+				"cacheWrite": 0,
+				"totalTokens": 94110,
+				"cost": {
+					"input": 0.06985000000000001,
+					"output": 0.0042,
+					"cacheRead": 0.04,
+					"cacheWrite": 0,
+					"total": 0.11405000000000001
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_2|fc_<hash>",
+			"name": "todo",
+			"intent": "Tracking plugin implementation"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_2|fc_<hash>",
+			"name": "todo",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"op": "init",
+					"phases": [
+						{
+							"name": "Implementation",
+							"tasks": [
+								{
+									"content": "Inspect repository state and constraints",
+									"status": "in_progress"
+								},
+								{
+									"content": "Prepare isolated latest OMP runtime",
+									"status": "pending"
+								},
+								{
+									"content": "Implement cards mode with regression probes",
+									"status": "pending"
+								},
+								{
+									"content": "Implement live mode and write summaries",
+									"status": "pending"
+								},
+								{
+									"content": "Validate both modes in real OMP",
+									"status": "pending"
+								},
+								"<+2 items>"
+							]
+						}
+					],
+					"storage": "session"
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 7152,
+				"output": 99,
+				"cacheRead": 87552,
+				"cacheWrite": 0,
+				"totalTokens": 94803,
+				"cost": {
+					"input": 0.03576,
+					"output": 0.00297,
+					"cacheRead": 0.043775999999999995,
+					"cacheWrite": 0,
+					"total": 0.082506
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_3|fc_<hash>",
+			"name": "glob",
+			"args": {
+				"path": "work/context; context"
+			},
+			"intent": "Finding existing decision contexts"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_3|fc_<hash>",
+			"name": "glob",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {}
+			},
+			"isError": true,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 5149,
+				"output": 46,
+				"cacheRead": 89856,
+				"cacheWrite": 0,
+				"totalTokens": 95051,
+				"cost": {
+					"input": 0.025745,
+					"output": 0.00138,
+					"cacheRead": 0.044927999999999996,
+					"cacheWrite": 0,
+					"total": 0.07205299999999999
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_4|fc_<hash>",
+			"name": "bash",
+			"args": {
+				"command": "git rev-parse --show-toplevel && git status --porcelain"
+			},
+			"intent": "Checking workspace git boundaries"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_4|fc_<hash>",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 300,
+					"wallTimeMs": 140.9464159999916
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 11858,
+				"output": 45,
+				"cacheRead": 83200,
+				"cacheWrite": 0,
+				"totalTokens": 95103,
+				"cost": {
+					"input": 0.05929,
+					"output": 0.00135,
+					"cacheRead": 0.0416,
+					"cacheWrite": 0,
+					"total": 0.10224
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_5|fc_<hash>",
+			"name": "ask",
+			"intent": "Agreeing decision record wording"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_5|fc_<hash>",
+			"name": "ask",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"question": "Согласовать эти три записи решений и расположение `work/context/compact-plugin-rendering.md`?",
+					"options": [
+						"Записать как предложено",
+						"Сначала изменить формулировки"
+					],
+					"multi": false,
+					"selectedOptions": ["Записать как предложено"]
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_6|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "work"
+			},
+			"intent": "Inventorying patch workspace"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_6|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"isDirectory": true,
+					"resolvedPath": "/repo/work",
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/work"
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_7|fc_<hash>",
+			"name": "bash",
+			"args": {
+				"command": "git add -- work && git commit -m \"docs: capture omp compact patch research\""
+			},
+			"intent": "Committing existing patch baseline"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_7|fc_<hash>",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 300,
+					"wallTimeMs": 162.66308299999218
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_8|fc_<hash>",
+			"name": "write",
+			"args": {
+				"path": "work/context/compact-plugin-rendering.md"
+			},
+			"intent": "Recording approved architecture decisions"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_8|fc_<hash>",
+			"name": "write",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"resolvedPath": "/repo/work/context/compact-plugin-rendering.md"
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_9|fc_<hash>",
+			"name": "bash",
+			"args": {
+				"command": "mkdir -p /tmp/omp12 && bun add --exact @host/pi-coding-agent@17.2.12"
+			},
+			"intent": "Installing isolated latest OMP"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_9|fc_<hash>",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {}
+			},
+			"isError": true,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_10|fc_<hash>",
+			"name": "todo",
+			"intent": "Advancing implementation checklist"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_10|fc_<hash>",
+			"name": "todo",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"op": "done",
+					"phases": [
+						{
+							"name": "Implementation",
+							"tasks": [
+								{
+									"content": "Inspect repository state and constraints",
+									"status": "completed"
+								},
+								{
+									"content": "Prepare isolated latest OMP runtime",
+									"status": "in_progress"
+								},
+								{
+									"content": "Implement cards mode with regression probes",
+									"status": "pending"
+								},
+								{
+									"content": "Implement live mode and write summaries",
+									"status": "pending"
+								},
+								{
+									"content": "Validate both modes in real OMP",
+									"status": "pending"
+								},
+								"<+2 items>"
+							]
+						}
+					],
+					"storage": "session",
+					"completedTasks": [
+						{
+							"phase": "Implementation",
+							"content": "Inspect repository state and constraints"
+						}
+					]
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_11|fc_<hash>",
+			"name": "bash",
+			"args": {
+				"command": "mkdir -p omp12 && bun add --exact @host/pi-coding-agent@17.2.12"
+			},
+			"intent": "Preparing isolated latest OMP runtime"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_11|fc_<hash>",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 3600,
+					"wallTimeMs": 7670.3347919999505
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_12|fc_<hash>",
+			"name": "bash",
+			"args": {
+				"command": "./node_modules/.bin/omp --version"
+			},
+			"intent": "Verifying isolated OMP binary"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_12|fc_<hash>",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 60,
+					"wallTimeMs": 30.99800000002142,
+					"exitCode": 127
+				}
+			},
+			"isError": true,
+			"pruned": true
+		},
+		{
+			"t": "answer",
+			"text": "<answer 1>",
+			"stop": "stop"
+		},
+		{
+			"t": "run_start"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_280|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "host-source/packages/coding-agent/src/modes/components/read-tool-group.ts:1-220"
+			},
+			"intent": "Inspecting native read group color implementation"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_281|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "host-source/packages/coding-agent/src/modes/components/read-tool-group.ts:320-860"
+			},
+			"intent": "Inspecting native read group row renderers"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_282|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "host-source/packages/coding-agent/src/modes/components/tool-execution.ts:1-130; host-source/packages/coding-agent/src/modes/components/tool-execution.ts:260-360"
+			},
+			"intent": "Inspecting tool execution native read routing"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_283|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "plugin/compact.test.ts:1-180"
+			},
+			"intent": "Inspecting current compact mode tests"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_284|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "plugin/index.integration.test.ts:140-175; plugin/index.integration.test.ts:625-680"
+			},
+			"intent": "Inspecting current integration read coverage"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_285|fc_<hash>",
+			"name": "bash",
+			"args": {
+				"command": "git status --short"
+			},
+			"intent": "Checking clean state before read color fix"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_283|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 4207 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+166 items>"]
+					},
+					"fileSize": 4207,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/compact.test.ts"
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 34344,
+				"output": 761,
+				"cacheRead": 103040,
+				"cacheWrite": 0,
+				"totalTokens": 138145,
+				"reasoningTokens": 384,
+				"cost": {
+					"input": 0.17172,
+					"output": 0.02283,
+					"cacheRead": 0.051519999999999996,
+					"cacheWrite": 0,
+					"total": 0.24607
+				}
+			}
+		},
+		{
+			"t": "tool_result",
+			"id": "call_280|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 7104 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 857,
+						"totalBytes": 7120,
+						"outputLines": 223,
+						"outputBytes": 7120,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 7109 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+220 items>"]
+					},
+					"fileSize": 28705,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/host-source/packages/coding-agent/src/modes/components/read-tool-group.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 857,
+							"totalBytes": 7120,
+							"outputLines": 223,
+							"outputBytes": 7120,
+							"shownRange": {
+								"start": 1,
+								"end": 223
+							},
+							"nextOffset": 224
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_result",
+			"id": "call_281|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 18903 chars]",
+						"startLine": 289,
+						"lineNumbers": [289, null, 319, 320, 321, "<+536 items>"]
+					},
+					"fileSize": 28705,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/host-source/packages/coding-agent/src/modes/components/read-tool-group.ts"
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_result",
+			"id": "call_285|fc_<hash>",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 300,
+					"wallTimeMs": 2054.4718340002
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_result",
+			"id": "call_284|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"notes": [
+						"Note: interpreted as 2 paths: plugin/index.integration.test.ts:140-175, plugin/index.integration.test.ts:625-680"
+					],
+					"displayReadTargets": [
+						"plugin/index.integration.test.ts:140-175",
+						"plugin/index.integration.test.ts:625-680"
+					]
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_result",
+			"id": "call_282|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"notes": [
+						"Note: interpreted as 2 paths: host-source/packages/coding-agent/src/modes/components/tool-execution.ts:1-130, host-source/packages/coding-agent/src/modes/components/tool-execution.ts:260-360"
+					],
+					"displayReadTargets": [
+						"host-source/packages/coding-agent/src/modes/components/tool-execution.ts:1-130",
+						"host-source/packages/coding-agent/src/modes/components/tool-execution.ts:260-360"
+					]
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_286|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "host-source/packages/coding-agent/src/modes/components/chat-transcript-builder.ts:350-475"
+			},
+			"intent": "Inspecting host read grouping insertion logic"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_287|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "host-source/packages/coding-agent/src/modes/controllers/event-controller.ts:1080-1220"
+			},
+			"intent": "Inspecting event controller read group creation"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_288|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "host-source/packages/coding-agent/src/modes/controllers/event-controller.ts:1220-1410"
+			},
+			"intent": "Inspecting event controller tool start grouping"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_289|fc_<hash>",
+			"name": "grep",
+			"args": {
+				"path": "host-source/packages/coding-agent/src/modes"
+			},
+			"intent": "Locating read group construction callsites"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_290|fc_<hash>",
+			"name": "grep",
+			"args": {
+				"path": "host-source/packages/coding-agent/src/modes/theme; host-source/packages/coding-agent/src"
+			},
+			"intent": "Locating theme singleton mutation APIs"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_286|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 4998 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 174,
+						"totalBytes": 4998,
+						"outputLines": 130,
+						"outputBytes": 4998,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 5099 chars]",
+						"startLine": 314,
+						"lineNumbers": [314, null, 349, 350, 351, "<+131 items>"]
+					},
+					"fileSize": 20328,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/host-source/packages/coding-agent/src/modes/components/chat-transcript-builder.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 522,
+							"totalBytes": 4998,
+							"outputLines": 130,
+							"outputBytes": 4998,
+							"shownRange": {
+								"start": 349,
+								"end": 478
+							},
+							"nextOffset": 479
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 17951,
+				"output": 1266,
+				"cacheRead": 133888,
+				"cacheWrite": 0,
+				"totalTokens": 153105,
+				"reasoningTokens": 980,
+				"cost": {
+					"input": 0.089755,
+					"output": 0.03798,
+					"cacheRead": 0.066944,
+					"cacheWrite": 0,
+					"total": 0.194679
+				}
+			}
+		},
+		{
+			"t": "tool_result",
+			"id": "call_287|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 6870 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 1096,
+						"totalBytes": 6882,
+						"outputLines": 145,
+						"outputBytes": 6882,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 7384 chars]",
+						"startLine": 970,
+						"lineNumbers": [970, null, 975, null, 1007, "<+163 items>"]
+					},
+					"fileSize": 99551,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/host-source/packages/coding-agent/src/modes/controllers/event-controller.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 2174,
+							"totalBytes": 6882,
+							"outputLines": 145,
+							"outputBytes": 6882,
+							"shownRange": {
+								"start": 1079,
+								"end": 1223
+							},
+							"nextOffset": 1224
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_result",
+			"id": "call_288|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 8607 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 956,
+						"totalBytes": 8621,
+						"outputLines": 195,
+						"outputBytes": 8621,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 9069 chars]",
+						"startLine": 1141,
+						"lineNumbers": [1141, null, 1160, null, 1192, "<+206 items>"]
+					},
+					"fileSize": 99551,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/host-source/packages/coding-agent/src/modes/controllers/event-controller.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 2174,
+							"totalBytes": 8621,
+							"outputLines": 195,
+							"outputBytes": 8621,
+							"shownRange": {
+								"start": 1219,
+								"end": 1413
+							},
+							"nextOffset": 1414
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_result",
+			"id": "call_289|fc_<hash>",
+			"name": "grep",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"scopePath": "host-source/packages/coding-agent/src/modes",
+					"searchPath": "/repo/host-source/packages/coding-agent/src/modes",
+					"cwd": "/repo",
+					"matchCount": 31,
+					"fileCount": 7,
+					"files": [
+						"host-source/packages/coding-agent/src/modes/components/chat-transcript-builder.ts",
+						"host-source/packages/coding-agent/src/modes/components/read-tool-group.ts",
+						"host-source/packages/coding-agent/src/modes/controllers/event-controller.ts",
+						"host-source/packages/coding-agent/src/modes/controllers/input-controller.ts",
+						"host-source/packages/coding-agent/src/modes/controllers/selector-controller.ts",
+						"<+2 items>"
+					],
+					"fileMatches": [
+						{
+							"path": "host-source/packages/coding-agent/src/modes/components/chat-transcript-builder.ts",
+							"count": 6
+						},
+						{
+							"path": "host-source/packages/coding-agent/src/modes/components/read-tool-group.ts",
+							"count": 3
+						},
+						{
+							"path": "host-source/packages/coding-agent/src/modes/controllers/event-controller.ts",
+							"count": 11
+						},
+						{
+							"path": "host-source/packages/coding-agent/src/modes/controllers/input-controller.ts",
+							"count": 2
+						},
+						{
+							"path": "host-source/packages/coding-agent/src/modes/controllers/selector-controller.ts",
+							"count": 2
+						},
+						"<+2 items>"
+					],
+					"truncated": false,
+					"displayContent": "[output 9309 chars]"
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_result",
+			"id": "call_290|fc_<hash>",
+			"name": "grep",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"scopePath": "host-source/packages/coding-agent/src/modes/theme, host-source/packages/coding-agent/src",
+					"searchPath": "/repo/host-source/packages/coding-agent/src",
+					"cwd": "/repo",
+					"matchCount": 38,
+					"fileCount": 20,
+					"files": [
+						"host-source/packages/coding-agent/src/config/settings.ts",
+						"host-source/packages/coding-agent/src/debug/index.ts",
+						"host-source/packages/coding-agent/src/debug/protocol-probe.ts",
+						"host-source/packages/coding-agent/src/edit/renderer.ts",
+						"host-source/packages/coding-agent/src/export/html/template.css",
+						"<+15 items>"
+					],
+					"fileMatches": [
+						{
+							"path": "host-source/packages/coding-agent/src/config/settings.ts",
+							"count": 3
+						},
+						{
+							"path": "host-source/packages/coding-agent/src/debug/index.ts",
+							"count": 1
+						},
+						{
+							"path": "host-source/packages/coding-agent/src/debug/protocol-probe.ts",
+							"count": 1
+						},
+						{
+							"path": "host-source/packages/coding-agent/src/edit/renderer.ts",
+							"count": 3
+						},
+						{
+							"path": "host-source/packages/coding-agent/src/export/html/template.css",
+							"count": 1
+						},
+						"<+15 items>"
+					],
+					"truncated": true,
+					"fileLimitReached": 20,
+					"displayContent": "[output 9372 chars]"
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_291|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "host-source/packages/coding-agent/src/modes/theme/theme.ts:1-260"
+			},
+			"intent": "Inspecting theme object and color tokens"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_291|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 9161 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 746,
+						"totalBytes": 9175,
+						"outputLines": 263,
+						"outputBytes": 9175,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 9163 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+259 items>"]
+					},
+					"fileSize": 24495,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/host-source/packages/coding-agent/src/modes/theme/theme.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 746,
+							"totalBytes": 9175,
+							"outputLines": 263,
+							"outputBytes": 9175,
+							"shownRange": {
+								"start": 1,
+								"end": 263
+							},
+							"nextOffset": 264
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 12346,
+				"output": 2061,
+				"cacheRead": 151552,
+				"cacheWrite": 0,
+				"totalTokens": 165959,
+				"reasoningTokens": 1867,
+				"cost": {
+					"input": 0.06173000000000001,
+					"output": 0.06183,
+					"cacheRead": 0.075776,
+					"cacheWrite": 0,
+					"total": 0.199336
+				}
+			}
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 6127,
+				"output": 796,
+				"cacheRead": 162816,
+				"cacheWrite": 0,
+				"totalTokens": 169739,
+				"reasoningTokens": 549,
+				"cost": {
+					"input": 0.030635000000000003,
+					"output": 0.023880000000000002,
+					"cacheRead": 0.081408,
+					"cacheWrite": 0,
+					"total": 0.13592300000000002
+				}
+			}
+		},
+		{
+			"t": "run_end",
+			"stop": "aborted"
+		},
+		{
+			"t": "session_shutdown"
+		}
+	]
+}

@@ -1,0 +1,817 @@
+{
+	"meta": {
+		"id": "multi-git-retention",
+		"source": "<session>",
+		"sourceKind": "session-jsonl",
+		"cwd": "/repo",
+		"mode": "live",
+		"stats": false,
+		"terminal": "stop",
+		"events": 39,
+		"tools": 16,
+		"toolNames": {
+			"read": 15,
+			"grep": 1
+		},
+		"redaction": "session source -> <session>; absolute repo paths -> /repo + canonical namespaces (plugin|host|host-source|host-docs|work); other absolute roots -> /abs/N; worker labels -> peer-N; toolCallIds -> call_N (fc_ composite shape kept); secrets/emails/hashes -> <placeholders>; assistant prose -> deterministic <answer N>/dropped; shaken markers -> [shaken]; strings capped (args 200, result 300, arrays 5); entry envelope fields (ids/timestamps) dropped",
+		"note": "terminal stop answer; eval + edit + read mix"
+	},
+	"events": [
+		{
+			"t": "run_start"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_1",
+			"name": "read",
+			"args": {
+				"path": "plugin/git-records.ts:224-476"
+			},
+			"intent": "read rest of git-records"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_1",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 6881 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 6881 chars]",
+						"startLine": 223,
+						"lineNumbers": [223, 224, 225, 226, 227, "<+249 items>"]
+					},
+					"fileSize": 11980,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/git-records.ts"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 197,
+				"output": 152,
+				"cacheRead": 34048,
+				"cacheWrite": 0,
+				"totalTokens": 34397,
+				"reasoningTokens": 71,
+				"cost": {
+					"input": 0.00002758,
+					"output": 0.000042560000000000006,
+					"cacheRead": 0.00009533439999999999,
+					"cacheWrite": 0,
+					"total": 0.0001654744
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_2",
+			"name": "read",
+			"args": {
+				"path": "plugin/index.ts"
+			},
+			"intent": "read index.ts"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_2",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 1370 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 1269 chars]",
+						"startLine": 1
+					},
+					"summary": {
+						"lines": 54,
+						"elidedSpans": 6,
+						"elidedLines": 233
+					},
+					"fileSize": 8149,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/index.ts"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 2028,
+				"output": 169,
+				"cacheRead": 34304,
+				"cacheWrite": 0,
+				"totalTokens": 36501,
+				"reasoningTokens": 98,
+				"cost": {
+					"input": 0.00028392,
+					"output": 0.00004732,
+					"cacheRead": 0.00009605119999999999,
+					"cacheWrite": 0,
+					"total": 0.0004272912
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_3",
+			"name": "read",
+			"args": {
+				"path": "plugin/index.ts:1-280"
+			},
+			"intent": "read full index.ts"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_3",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 8058 chars]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 7993 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 294,
+						"totalBytes": 7997,
+						"outputLines": 283,
+						"outputBytes": 7997,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 8002 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+282 items>"]
+					},
+					"fileSize": 8149,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/index.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 294,
+							"totalBytes": 7997,
+							"outputLines": 283,
+							"outputBytes": 7997,
+							"shownRange": {
+								"start": 1,
+								"end": 283
+							},
+							"nextOffset": 284
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 376,
+				"output": 76,
+				"cacheRead": 36480,
+				"cacheWrite": 0,
+				"totalTokens": 36932,
+				"cost": {
+					"input": 0.000052640000000000004,
+					"output": 0.000021280000000000003,
+					"cacheRead": 0.00010214399999999999,
+					"cacheWrite": 0,
+					"total": 0.000176064
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_4",
+			"name": "read",
+			"args": {
+				"path": "plugin/messages.ts"
+			},
+			"intent": "read messages.ts"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_5",
+			"name": "read",
+			"args": {
+				"path": "plugin/git-records.test.ts"
+			},
+			"intent": "read git-records tests"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_5",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 1720 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 1613 chars]",
+						"startLine": 1
+					},
+					"summary": {
+						"lines": 50,
+						"elidedSpans": 7,
+						"elidedLines": 77
+					},
+					"fileSize": 3613,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/git-records.test.ts"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 2252,
+				"output": 164,
+				"cacheRead": 36864,
+				"cacheWrite": 0,
+				"totalTokens": 39280,
+				"reasoningTokens": 29,
+				"cost": {
+					"input": 0.00031528000000000003,
+					"output": 0.00004592,
+					"cacheRead": 0.00010321919999999999,
+					"cacheWrite": 0,
+					"total": 0.00046441920000000005
+				}
+			}
+		},
+		{
+			"t": "tool_result",
+			"id": "call_4",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 1700 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 1700 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+63 items>"]
+					},
+					"fileSize": 1700,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/messages.ts"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_6",
+			"name": "read",
+			"args": {
+				"path": "plugin/git-records.test.ts:1-140"
+			},
+			"intent": "read full git-records test"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_6",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 3607 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 3603 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+130 items>"]
+					},
+					"fileSize": 3613,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/git-records.test.ts"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_7",
+			"name": "grep",
+			"args": {
+				"path": "plugin/runtime-adapter.ts"
+			},
+			"intent": "find git handling in runtime-adapter"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_7",
+			"name": "grep",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 1982 chars]"
+					}
+				],
+				"details": {
+					"scopePath": "plugin/runtime-adapter.ts",
+					"searchPath": "/repo/plugin/runtime-adapter.ts",
+					"cwd": "/repo",
+					"matchCount": 16,
+					"fileCount": 1,
+					"files": ["plugin/runtime-adapter.ts"],
+					"fileMatches": [
+						{
+							"path": "plugin/runtime-adapter.ts",
+							"count": 16
+						}
+					],
+					"truncated": false,
+					"displayContent": "[output 2087 chars]"
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_8",
+			"name": "read",
+			"args": {
+				"path": "plugin/runtime-adapter.ts:1-140"
+			},
+			"intent": "read runtime-adapter header and types"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_8",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 3784 chars]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 3713 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 1254,
+						"totalBytes": 3719,
+						"outputLines": 143,
+						"outputBytes": 3719,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 3727 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+141 items>"]
+					},
+					"fileSize": 39172,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/runtime-adapter.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 1254,
+							"totalBytes": 3719,
+							"outputLines": 143,
+							"outputBytes": 3719,
+							"shownRange": {
+								"start": 1,
+								"end": 143
+							},
+							"nextOffset": 144
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_9",
+			"name": "read",
+			"args": {
+				"path": "plugin/runtime-adapter.ts:360-520"
+			},
+			"intent": "read hydrate and setGit area"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_10",
+			"name": "read",
+			"args": {
+				"path": "plugin/runtime-adapter.ts:1040-1130"
+			},
+			"intent": "read render/lines area"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_10",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 3275 chars]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 3146 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 216,
+						"totalBytes": 3150,
+						"outputLines": 95,
+						"outputBytes": 3150,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 3217 chars]",
+						"startLine": 1024,
+						"lineNumbers": [1024, null, 1039, 1040, 1041, "<+101 items>"]
+					},
+					"fileSize": 39172,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/runtime-adapter.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 1254,
+							"totalBytes": 3150,
+							"outputLines": 95,
+							"outputBytes": 3150,
+							"shownRange": {
+								"start": 1039,
+								"end": 1133
+							},
+							"nextOffset": 1134
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_result",
+			"id": "call_9",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 5135 chars]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 4891 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 896,
+						"totalBytes": 4891,
+						"outputLines": 165,
+						"outputBytes": 4891,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 5080 chars]",
+						"startLine": 276,
+						"lineNumbers": [276, null, 286, null, 345, "<+180 items>"]
+					},
+					"fileSize": 39172,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/runtime-adapter.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 1254,
+							"totalBytes": 4891,
+							"outputLines": 165,
+							"outputBytes": 4891,
+							"shownRange": {
+								"start": 359,
+								"end": 523
+							},
+							"nextOffset": 524
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_11",
+			"name": "read",
+			"args": {
+				"path": "plugin/render.ts"
+			},
+			"intent": "read render.ts"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_12",
+			"name": "read",
+			"args": {
+				"path": "plugin/turn-ledger.ts"
+			},
+			"intent": "read turn-ledger.ts"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_11",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 2262 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 2162 chars]",
+						"startLine": 1
+					},
+					"summary": {
+						"lines": 80,
+						"elidedSpans": 17,
+						"elidedLines": 189
+					},
+					"fileSize": 8298,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/render.ts"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_result",
+			"id": "call_12",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 1383 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 1280 chars]",
+						"startLine": 1
+					},
+					"summary": {
+						"lines": 50,
+						"elidedSpans": 12,
+						"elidedLines": 129
+					},
+					"fileSize": 4968,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/turn-ledger.ts"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_13",
+			"name": "read",
+			"args": {
+				"path": "plugin/turn-ledger.ts"
+			},
+			"intent": "read full turn-ledger"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_14",
+			"name": "read",
+			"args": {
+				"path": "plugin/render.ts"
+			},
+			"intent": "read full render.ts"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_14",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 2262 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 2162 chars]",
+						"startLine": 1
+					},
+					"summary": {
+						"lines": 80,
+						"elidedSpans": 17,
+						"elidedLines": 189
+					},
+					"fileSize": 8298,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/render.ts"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_result",
+			"id": "call_13",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 1383 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 1280 chars]",
+						"startLine": 1
+					},
+					"summary": {
+						"lines": 50,
+						"elidedSpans": 12,
+						"elidedLines": 129
+					},
+					"fileSize": 4968,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/turn-ledger.ts"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_15",
+			"name": "read",
+			"args": {
+				"path": "plugin/turn-ledger.ts:raw"
+			},
+			"intent": "read raw turn-ledger"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_15",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 4966 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 4966 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+187 items>"]
+					},
+					"fileSize": 4968,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/turn-ledger.ts"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_16",
+			"name": "read",
+			"args": {
+				"path": "plugin/render.ts:raw"
+			},
+			"intent": "read raw render.ts"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_16",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 8260 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 8252 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+278 items>"]
+					},
+					"fileSize": 8298,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/render.ts"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "answer",
+			"text": "<answer 1>",
+			"stop": "stop"
+		},
+		{
+			"t": "session_shutdown"
+		}
+	]
+}

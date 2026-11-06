@@ -1,0 +1,55 @@
+/**
+ * Structural typing for the host theme.
+ *
+ * OMP 18.0.1 through 18.2.0 exported Theme from `@oh-my-pi/pi-coding-agent/modes/theme/theme`.
+ * OMP 18.2.5 moved the theme engine into `@oh-my-pi/pi-tui/theme/theme`.
+ * Decoupling via this structural interface protects against host relocations
+ * while remaining fully compatible across all supported OMP versions.
+ */
+
+export type ThemeColor = string;
+
+export interface Theme {
+	readonly boxRound?: {
+		topLeft: string;
+		topRight?: string;
+		bottomLeft: string;
+		bottomRight?: string;
+		horizontal: string;
+		vertical?: string;
+	};
+	readonly spinnerFrames?: readonly string[];
+	readonly icon?: Record<string, string>;
+	readonly format?: {
+		bullet?: string;
+		dash?: string;
+		bracketLeft?: string;
+		bracketRight?: string;
+	};
+	/**
+	 * Symbol-category accessors the stock transcript cards read
+	 * (`theme.status.info`, `theme.sep.dot` on the advisor card header).
+	 * Optional because a host theme that predates the accessor or a theme
+	 * stub without symbol categories still satisfies this interface; callers
+	 * that reconstruct stock chrome must treat a missing member as
+	 * unsupported and fail open.
+	 */
+	readonly status?: { readonly info?: string };
+	readonly sep?: { readonly dot?: string };
+	fg(color: ThemeColor, text: string): string;
+	bg(color: ThemeColor, text: string): string;
+	bold(text: string): string;
+	underline?(text: string): string;
+	italic?(text: string): string;
+	/** Host Theme structural mirror; optional across host versions. */
+	strikethrough?(text: string): string;
+	inverse?(text: string): string;
+	/** Host Theme structural mirror; optional across host versions. */
+	getFgAnsi?(color: ThemeColor): string;
+	/** Host Theme structural mirror; optional across host versions. */
+	getBgAnsi?(color: ThemeColor): string;
+	getSpinnerFrames?(name?: string): readonly string[];
+	symbol?(name: string): string;
+	/** Host Theme structural mirror; optional across host versions. */
+	styledSymbol?(name: string, role?: string): string;
+}

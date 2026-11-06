@@ -1,0 +1,692 @@
+{
+	"meta": {
+		"id": "git-compound-main",
+		"source": "<session>",
+		"sourceKind": "session-jsonl",
+		"cwd": "/repo",
+		"mode": "live",
+		"stats": false,
+		"terminal": "stop",
+		"events": 43,
+		"tools": 15,
+		"toolNames": {
+			"bash": 6,
+			"read": 5,
+			"glob": 2,
+			"write": 2
+		},
+		"redaction": "session source -> <session>; absolute repo paths -> /repo + canonical namespaces (plugin|host|host-source|host-docs|work); other absolute roots -> /abs/N; worker labels -> peer-N; toolCallIds -> call_N (fc_ composite shape kept); secrets/emails/hashes -> <placeholders>; assistant prose -> deterministic <answer N>/dropped; shaken markers -> [shaken]; strings capped (args 200, result 300, arrays 5); entry envelope fields (ids/timestamps) dropped",
+		"note": "real git add/commit compound + status; composite call_N|fc_<hash> toolCallIds; two terminal runs"
+	},
+	"events": [
+		{
+			"t": "run_start"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_1|fc_<hash>",
+			"name": "glob",
+			"args": {
+				"path": "/repo/work/PLUGIN-CODE-REVIEW.md"
+			},
+			"intent": "Проверяю имя файла отчета"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_2|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "/repo/work"
+			},
+			"intent": "Сверяю названия соседних отчетов"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_1|fc_<hash>",
+			"name": "glob",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {}
+			},
+			"isError": true,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 172688,
+				"output": 585,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"totalTokens": 173273,
+				"reasoningTokens": 402,
+				"cost": {
+					"input": 0.8634400000000001,
+					"output": 0.01755,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"total": 0.88099
+				}
+			}
+		},
+		{
+			"t": "tool_result",
+			"id": "call_2|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"isDirectory": true,
+					"resolvedPath": "/repo/work",
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/work"
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_3|fc_<hash>",
+			"name": "write",
+			"args": {
+				"path": "/repo/work/PLUGIN-CODE-REVIEW.md"
+			},
+			"intent": "Записываю полный отчет код-ревью"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_3|fc_<hash>",
+			"name": "write",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"resolvedPath": "/repo/work/PLUGIN-CODE-REVIEW.md"
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 992,
+				"output": 3319,
+				"cacheRead": 172544,
+				"cacheWrite": 0,
+				"totalTokens": 176855,
+				"reasoningTokens": 76,
+				"cost": {
+					"input": 0.00496,
+					"output": 0.09957,
+					"cacheRead": 0.086272,
+					"cacheWrite": 0,
+					"total": 0.19080200000000003
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_4|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "/repo/work/PLUGIN-CODE-REVIEW.md:1-35"
+			},
+			"intent": "Проверяю начало сохраненного отчета"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_5|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "/repo/work/PLUGIN-CODE-REVIEW.md:250-330"
+			},
+			"intent": "Проверяю финал сохраненного отчета"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_6|fc_<hash>",
+			"name": "bash",
+			"args": {
+				"command": "wc -l -c PLUGIN-CODE-REVIEW.md"
+			},
+			"intent": "Проверяю размер отчета"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_4|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 1190 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 292,
+						"totalBytes": 1791,
+						"outputLines": 38,
+						"outputBytes": 1791,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 1535 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+39 items>"]
+					},
+					"fileSize": 15979,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/work/PLUGIN-CODE-REVIEW.md"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 292,
+							"totalBytes": 1791,
+							"outputLines": 38,
+							"outputBytes": 1791,
+							"shownRange": {
+								"start": 1,
+								"end": 38
+							},
+							"nextOffset": 39
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 4356,
+				"output": 259,
+				"cacheRead": 172544,
+				"cacheWrite": 0,
+				"totalTokens": 177159,
+				"reasoningTokens": 73,
+				"cost": {
+					"input": 0.02178,
+					"output": 0.00777,
+					"cacheRead": 0.086272,
+					"cacheWrite": 0,
+					"total": 0.11582200000000001
+				}
+			}
+		},
+		{
+			"t": "tool_result",
+			"id": "call_5|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 1985 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, null, 20, null, 245, "<+45 items>"]
+					},
+					"fileSize": 15979,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/work/PLUGIN-CODE-REVIEW.md"
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_result",
+			"id": "call_6|fc_<hash>",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 30,
+					"wallTimeMs": 27.1281659998931
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_7|fc_<hash>",
+			"name": "bash",
+			"args": {
+				"command": "git status --short --untracked-files=all"
+			},
+			"intent": "Проверяю изменения перед фиксацией отчета"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_7|fc_<hash>",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 30,
+					"wallTimeMs": 148.39091599965468
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 1661,
+				"output": 583,
+				"cacheRead": 176640,
+				"cacheWrite": 0,
+				"totalTokens": 178884,
+				"reasoningTokens": 476,
+				"cost": {
+					"input": 0.008305,
+					"output": 0.017490000000000002,
+					"cacheRead": 0.08832,
+					"cacheWrite": 0,
+					"total": 0.114115
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_8|fc_<hash>",
+			"name": "bash",
+			"args": {
+				"command": "git add work/PLUGIN-CODE-REVIEW.md && git commit -m \"docs: add omp compact code review\""
+			},
+			"intent": "Фиксирую отчет отдельным коммитом"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_8|fc_<hash>",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 120,
+					"wallTimeMs": 174.67491600010544
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "answer",
+			"text": "<answer 1>",
+			"stop": "stop"
+		},
+		{
+			"t": "run_start"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_9|fc_<hash>",
+			"name": "glob",
+			"args": {
+				"path": "/repo/work/goal.md"
+			},
+			"intent": "Проверяю наличие goal файла"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_10|fc_<hash>",
+			"name": "bash",
+			"args": {
+				"command": "git status --short --untracked-files=all"
+			},
+			"intent": "Проверяю состояние перед записью"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_9|fc_<hash>",
+			"name": "glob",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {}
+			},
+			"isError": true,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 182058,
+				"output": 301,
+				"cacheRead": 0,
+				"cacheWrite": 0,
+				"totalTokens": 182359,
+				"reasoningTokens": 121,
+				"cost": {
+					"input": 0.91029,
+					"output": 0.00903,
+					"cacheRead": 0,
+					"cacheWrite": 0,
+					"total": 0.91932
+				}
+			}
+		},
+		{
+			"t": "tool_result",
+			"id": "call_10|fc_<hash>",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 30,
+					"wallTimeMs": 193.91845799982548
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_11|fc_<hash>",
+			"name": "write",
+			"args": {
+				"path": "/repo/work/goal.md"
+			},
+			"intent": "Записываю цель и поведение плагина"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_11|fc_<hash>",
+			"name": "write",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"resolvedPath": "/repo/work/goal.md"
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 639,
+				"output": 1627,
+				"cacheRead": 181760,
+				"cacheWrite": 0,
+				"totalTokens": 184026,
+				"reasoningTokens": 39,
+				"cost": {
+					"input": 0.0031950000000000004,
+					"output": 0.04881,
+					"cacheRead": 0.09088,
+					"cacheWrite": 0,
+					"total": 0.142885
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_12|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "/repo/work/goal.md:1-35"
+			},
+			"intent": "Проверяю начало goal файла"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_13|fc_<hash>",
+			"name": "read",
+			"args": {
+				"path": "/repo/work/goal.md:145-190"
+			},
+			"intent": "Проверяю итоговую формулировку цели"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_14|fc_<hash>",
+			"name": "bash",
+			"args": {
+				"command": "git status --short --untracked-files=all"
+			},
+			"intent": "Проверяю изменения goal файла"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_13|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 1441 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, null, 126, null, 144, "<+34 items>"]
+					},
+					"fileSize": 8443,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/work/goal.md"
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 2300,
+				"output": 197,
+				"cacheRead": 181760,
+				"cacheWrite": 0,
+				"totalTokens": 184257,
+				"reasoningTokens": 29,
+				"cost": {
+					"input": 0.011500000000000002,
+					"output": 0.00591,
+					"cacheRead": 0.09088,
+					"cacheWrite": 0,
+					"total": 0.10829
+				}
+			}
+		},
+		{
+			"t": "tool_result",
+			"id": "call_12|fc_<hash>",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 1057 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 178,
+						"totalBytes": 1612,
+						"outputLines": 38,
+						"outputBytes": 1612,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 1332 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+41 items>"]
+					},
+					"fileSize": 8443,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/work/goal.md"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 178,
+							"totalBytes": 1612,
+							"outputLines": 38,
+							"outputBytes": 1612,
+							"shownRange": {
+								"start": 1,
+								"end": 38
+							},
+							"nextOffset": 39
+						}
+					}
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_result",
+			"id": "call_14|fc_<hash>",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 30,
+					"wallTimeMs": 136.98191699944437
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "tool_start",
+			"id": "call_15|fc_<hash>",
+			"name": "bash",
+			"args": {
+				"command": "git add work/goal.md && git commit -m \"docs: document omp compact goal\""
+			},
+			"intent": "Фиксирую goal документ"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_15|fc_<hash>",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[shaken]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 120,
+					"wallTimeMs": 143.06112500000745
+				}
+			},
+			"isError": false,
+			"pruned": true
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 1366,
+				"output": 75,
+				"cacheRead": 183808,
+				"cacheWrite": 0,
+				"totalTokens": 185249,
+				"reasoningTokens": 6,
+				"cost": {
+					"input": 0.00683,
+					"output": 0.0022500000000000003,
+					"cacheRead": 0.091904,
+					"cacheWrite": 0,
+					"total": 0.100984
+				}
+			}
+		},
+		{
+			"t": "answer",
+			"text": "<answer 2>",
+			"stop": "stop"
+		},
+		{
+			"t": "session_shutdown"
+		}
+	]
+}

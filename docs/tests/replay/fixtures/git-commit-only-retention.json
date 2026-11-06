@@ -1,0 +1,763 @@
+{
+	"meta": {
+		"id": "git-commit-only-retention",
+		"source": "<session>",
+		"sourceKind": "session-jsonl",
+		"cwd": "/repo",
+		"mode": "live",
+		"stats": false,
+		"terminal": "none",
+		"events": 38,
+		"tools": 16,
+		"toolNames": {
+			"read": 7,
+			"edit": 4,
+			"bash": 3,
+			"grep": 2
+		},
+		"redaction": "session source -> <session>; absolute repo paths -> /repo + canonical namespaces (plugin|host|host-source|host-docs|work); other absolute roots -> /abs/N; worker labels -> peer-N; toolCallIds -> call_N (fc_ composite shape kept); secrets/emails/hashes -> <placeholders>; assistant prose -> deterministic <answer N>/dropped; shaken markers -> [shaken]; strings capped (args 200, result 300, arrays 5); entry envelope fields (ids/timestamps) dropped",
+		"note": "real edit details.diff carriers; failed bash (exit 2); read path selectors; ends at yield (working phase)"
+	},
+	"events": [
+		{
+			"t": "run_start"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_1",
+			"name": "read",
+			"args": {
+				"path": "plugin/runtime-adapter.ts:560-1040"
+			},
+			"intent": "Read adapter core install and render hooks"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_1",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 16716 chars]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 16559 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 696,
+						"totalBytes": 16569,
+						"outputLines": 485,
+						"outputBytes": 16569,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 16659 chars]",
+						"startLine": 556,
+						"lineNumbers": [556, null, 558, 559, 560, "<+485 items>"]
+					},
+					"fileSize": 39172,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/runtime-adapter.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 1254,
+							"totalBytes": 16569,
+							"outputLines": 485,
+							"outputBytes": 16569,
+							"shownRange": {
+								"start": 559,
+								"end": 1043
+							},
+							"nextOffset": 1044
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 276,
+				"output": 3523,
+				"cacheRead": 95104,
+				"cacheWrite": 0,
+				"totalTokens": 98903,
+				"reasoningTokens": 3397,
+				"cost": {
+					"input": 0.00003864,
+					"output": 0.00098644,
+					"cacheRead": 0.0002662912,
+					"cacheWrite": 0,
+					"total": 0.0012913712
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_2",
+			"name": "read",
+			"args": {
+				"path": "plugin/index.integration.test.ts:1-260"
+			},
+			"intent": "Read integration harness helpers"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_2",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 7257 chars]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 7199 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 3907,
+						"totalBytes": 7196,
+						"outputLines": 263,
+						"outputBytes": 7196,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 7207 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+261 items>"]
+					},
+					"fileSize": 116460,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/index.integration.test.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 3907,
+							"totalBytes": 7196,
+							"outputLines": 263,
+							"outputBytes": 7196,
+							"shownRange": {
+								"start": 1,
+								"end": 263
+							},
+							"nextOffset": 264
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 4696,
+				"output": 8151,
+				"cacheRead": 98816,
+				"cacheWrite": 0,
+				"totalTokens": 111663,
+				"reasoningTokens": 8053,
+				"cost": {
+					"input": 0.00065744,
+					"output": 0.0022822800000000002,
+					"cacheRead": 0.00027668479999999997,
+					"cacheWrite": 0,
+					"total": 0.0032164048000000002
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_3",
+			"name": "read",
+			"args": {
+				"path": "plugin/index.integration.test.ts:263-484"
+			},
+			"intent": "Read remaining harness helpers"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_3",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 6389 chars]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 6258 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 3646,
+						"totalBytes": 6259,
+						"outputLines": 226,
+						"outputBytes": 6259,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 6337 chars]",
+						"startLine": 180,
+						"lineNumbers": [180, null, 185, null, 260, "<+230 items>"]
+					},
+					"fileSize": 116460,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/index.integration.test.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 3907,
+							"totalBytes": 6259,
+							"outputLines": 226,
+							"outputBytes": 6259,
+							"shownRange": {
+								"start": 262,
+								"end": 487
+							},
+							"nextOffset": 488
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 2078,
+				"output": 80,
+				"cacheRead": 111616,
+				"cacheWrite": 0,
+				"totalTokens": 113774,
+				"cost": {
+					"input": 0.00029092,
+					"output": 0.000022400000000000002,
+					"cacheRead": 0.0003125248,
+					"cacheWrite": 0,
+					"total": 0.0006258448
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_4",
+			"name": "read",
+			"args": {
+				"path": "plugin/render.test.ts:240-330"
+			},
+			"intent": "Read mutation color assertions"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_4",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 2376 chars]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 2146 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 216,
+						"totalBytes": 2157,
+						"outputLines": 95,
+						"outputBytes": 2157,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 2321 chars]",
+						"startLine": 119,
+						"lineNumbers": [119, null, 232, 233, null, "<+101 items>"]
+					},
+					"fileSize": 12809,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/render.test.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 454,
+							"totalBytes": 2157,
+							"outputLines": 95,
+							"outputBytes": 2157,
+							"shownRange": {
+								"start": 239,
+								"end": 333
+							},
+							"nextOffset": 334
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "continue",
+			"usage": {
+				"input": 1804,
+				"output": 256,
+				"cacheRead": 113664,
+				"cacheWrite": 0,
+				"totalTokens": 115724,
+				"reasoningTokens": 178,
+				"cost": {
+					"input": 0.00025256000000000003,
+					"output": 0.00007168,
+					"cacheRead": 0.0003182592,
+					"cacheWrite": 0,
+					"total": 0.0006424992
+				}
+			}
+		},
+		{
+			"t": "tool_start",
+			"id": "call_5",
+			"name": "read",
+			"args": {
+				"path": "plugin/runtime-adapter.ts:1-60"
+			},
+			"intent": "Read adapter imports"
+		},
+		{
+			"t": "tool_start",
+			"id": "call_6",
+			"name": "grep",
+			"args": {
+				"path": "plugin/audit.ts"
+			},
+			"intent": "Find completeEditMutations diff parsing"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_6",
+			"name": "grep",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 1809 chars]"
+					}
+				],
+				"details": {
+					"scopePath": "plugin/audit.ts",
+					"searchPath": "/repo/plugin/audit.ts",
+					"cwd": "/repo",
+					"matchCount": 16,
+					"fileCount": 1,
+					"files": ["plugin/audit.ts"],
+					"fileMatches": [
+						{
+							"path": "plugin/audit.ts",
+							"count": 16
+						}
+					],
+					"truncated": false,
+					"displayContent": "[output 1847 chars]"
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_result",
+			"id": "call_5",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 1626 chars]"
+					}
+				],
+				"details": {
+					"truncation": {
+						"content": "[output 1569 chars]",
+						"truncated": true,
+						"truncatedBy": "lines",
+						"totalLines": 1254,
+						"totalBytes": 1573,
+						"outputLines": 63,
+						"outputBytes": 1573,
+						"lastLinePartial": false,
+						"firstLineExceedsLimit": false
+					},
+					"displayContent": {
+						"text": "[output 1571 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+59 items>"]
+					},
+					"fileSize": 39172,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/runtime-adapter.ts"
+						},
+						"truncation": {
+							"direction": "head",
+							"truncatedBy": "lines",
+							"totalLines": 1254,
+							"totalBytes": 1573,
+							"outputLines": 63,
+							"outputBytes": 1573,
+							"shownRange": {
+								"start": 1,
+								"end": 63
+							},
+							"nextOffset": 64
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_7",
+			"name": "grep",
+			"args": {
+				"path": "plugin/audit-diff.ts"
+			},
+			"intent": "Read completeEditMutations implementation"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_7",
+			"name": "grep",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 3483 chars]"
+					}
+				],
+				"details": {
+					"scopePath": "plugin/audit-diff.ts",
+					"searchPath": "/repo/plugin/audit-diff.ts",
+					"cwd": "/repo",
+					"matchCount": 40,
+					"fileCount": 1,
+					"files": ["plugin/audit-diff.ts"],
+					"fileMatches": [
+						{
+							"path": "plugin/audit-diff.ts",
+							"count": 40
+						}
+					],
+					"truncated": false,
+					"displayContent": "[output 3606 chars]"
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_8",
+			"name": "bash",
+			"args": {
+				"command": "ls plugin/../ && cat plugin/package.json 2>/dev/null; echo ---; ls host/ | head; echo ---; env | grep -i omp"
+			},
+			"intent": "Check test runner setup and stock binary"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_8",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 1209 chars]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 300,
+					"wallTimeMs": 60.22929099947214,
+					"meta": {
+						"limits": {
+							"columnTruncated": {
+								"maxColumn": 768
+							}
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_9",
+			"name": "bash",
+			"args": {
+				"command": "cat host/package.json; echo ---; ls host/node_modules/.bin/ 2>/dev/null | head -20; echo ---; ls /tmp/omp-compact* 2>/dev/null | head"
+			},
+			"intent": "Inspect runtime package and bins"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_9",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 416 chars]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 300,
+					"wallTimeMs": 15.860084000974894
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_10",
+			"name": "bash",
+			"args": {
+				"command": "ls -la host/node_modules/.bin/omp; echo ---; grep -n \"OMP_STOCK_BIN\\|bun test\" work/goal.md work/refactoring.md 2>/dev/null | head -30"
+			},
+			"intent": "Check stock binary and documented test commands"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_10",
+			"name": "bash",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 396 chars]"
+					}
+				],
+				"details": {
+					"timeoutSeconds": 300,
+					"wallTimeMs": 5.838084001094103
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_11",
+			"name": "read",
+			"args": {
+				"path": "work/goal.md"
+			},
+			"intent": "Read goal doc for current contract"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_11",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 8404 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 8413 chars]",
+						"startLine": 1,
+						"lineNumbers": [1, 2, 3, 4, 5, "<+202 items>"]
+					},
+					"fileSize": 11304,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/work/goal.md"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_12",
+			"name": "read",
+			"args": {
+				"path": "plugin/render.test.ts:330-454"
+			},
+			"intent": "Read render tests tail"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_12",
+			"name": "read",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "[output 3505 chars]"
+					}
+				],
+				"details": {
+					"displayContent": {
+						"text": "[output 3504 chars]",
+						"startLine": 246,
+						"lineNumbers": [246, null, 319, 320, 321, "<+129 items>"]
+					},
+					"fileSize": 12809,
+					"meta": {
+						"source": {
+							"type": "path",
+							"value": "/repo/plugin/render.test.ts"
+						}
+					}
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_13",
+			"name": "edit",
+			"args": {
+				"path": "plugin/render.test.ts"
+			},
+			"intent": "Add new render exports to test interface"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_13",
+			"name": "edit",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "Successfully replaced text in plugin/render.test.ts."
+					}
+				],
+				"details": {
+					"diff": " 23|\tgitMessageComponent(\n\n 25|\t\ttheme: Theme,\n 26|\t): Component | undefined;\n+27|\tgitCommitHashes(details: GitMessageDetails): string[];\n+28|\tterminalGitSummaryLine(\n+29|\t\thashes: readonly string[],\n…<+161 chars>",
+					"path": "/repo/plugin/render.test.ts",
+					"firstChangedLine": 27,
+					"oldText": "[output 12681 chars]",
+					"newText": "[output 12837 chars]"
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_14",
+			"name": "edit",
+			"args": {
+				"path": "plugin/render.test.ts"
+			},
+			"intent": "Append terminal git summary unit tests"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_14",
+			"name": "edit",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "Successfully replaced text in plugin/render.test.ts."
+					}
+				],
+				"details": {
+					"diff": " 397|describe(\"pending rows\", () => {\n\n 446|\ttest(\"pending rows stay on the transparent terminal background\", () => {\n\n 458|\t});\n 459|});\n+460|\n+461|describe(\"terminal Git commit summary\", () => {\n+46…<+4084 chars>",
+					"path": "/repo/plugin/render.test.ts",
+					"firstChangedLine": 460,
+					"oldText": "[output 12837 chars]",
+					"newText": "[output 16329 chars]"
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_15",
+			"name": "edit",
+			"args": {
+				"path": "plugin/index.integration.test.ts"
+			},
+			"intent": "Flip migrated git row assertion to filtered-away"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_15",
+			"name": "edit",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "Successfully replaced text in plugin/index.integration.test.ts."
+					}
+				],
+				"details": {
+					"diff": " 982|\tawait finishRun(booted, \"done\");\n 983|\tconst completed = visibleRows(booted.transcript).join(\"\\n\");\n-984|\texpect(completed).toContain(\"git status M migrated.ts\");\n+984|\t// the non-commit Git row…<+279 chars>",
+					"path": "/repo/plugin/index.integration.test.ts",
+					"firstChangedLine": 984,
+					"snapshotsPruned": true
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "tool_start",
+			"id": "call_16",
+			"name": "edit",
+			"args": {
+				"path": "plugin/index.integration.test.ts"
+			},
+			"intent": "Update recognized Git retention test to commit summary"
+		},
+		{
+			"t": "tool_result",
+			"id": "call_16",
+			"name": "edit",
+			"result": {
+				"content": [
+					{
+						"type": "text",
+						"text": "Successfully replaced text in plugin/index.integration.test.ts."
+					}
+				],
+				"details": {
+					"diff": " 1322|stockTest(\n\n 1371|);\n 1372|\n-1373|stockTest(\"recognized Git rows survive, including failures\", async () => {\n-1374|\tconst success = await bootWithTranscript();\n-1375|\tawait beginRun(success);\n-1…<+4475 chars>",
+					"path": "/repo/plugin/index.integration.test.ts",
+					"firstChangedLine": 1373,
+					"snapshotsPruned": true
+				}
+			},
+			"isError": false
+		},
+		{
+			"t": "session_shutdown"
+		}
+	]
+}

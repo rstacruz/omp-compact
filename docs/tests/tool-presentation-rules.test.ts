@@ -1,0 +1,1300 @@
+import { describe, expect, test } from "bun:test";
+
+import { genericToolDescription } from "../../.omp-plugin/compact";
+import {
+	describeTool,
+	normalizeToolName,
+	resolveToolAudit,
+	resolveToolRule,
+	TOOL_ALIASES,
+	TOOL_RULES,
+	type ToolAuditKind,
+	type ToolRoute,
+} from "../../.omp-plugin/tool-presentation-rules";
+
+const CANONICAL_NAMES = [
+	"ask",
+	"ast_edit",
+	"ast_grep",
+	"bash",
+	"browser",
+	"checkpoint",
+	"computer",
+	"context_notes",
+	"edit",
+	"eval",
+	"find",
+	"github",
+	"glob",
+	"grep",
+	"hub",
+	"hus",
+	"ida",
+	"inspect_image",
+	"learn",
+	"lsp",
+	"manage_skill",
+	"memory_edit",
+	"new_context",
+	"read",
+	"recall",
+	"reflect",
+	"reject",
+	"resolve",
+	"retain",
+	"rewind",
+	"task",
+	"todo",
+	"vibe_kill",
+	"vibe_list",
+	"vibe_send",
+	"vibe_spawn",
+	"vibe_wait",
+	"wait",
+	"web_search",
+	"write",
+	"yield",
+].sort();
+
+describe("canonical routes and audit kinds", () => {
+	test("registry holds exactly the canonical names — never synthesizes rules", () => {
+		expect(Object.keys(TOOL_RULES).sort()).toEqual(CANONICAL_NAMES);
+	});
+
+	test("interactive four route compact with compactOnExpand; ask stays native", () => {
+		expect(TOOL_RULES.read?.route).toBe("read-group");
+		for (const name of ["browser", "computer", "resolve", "reject"]) {
+			expect(TOOL_RULES[name]?.route, name).toBe("compact");
+			expect(TOOL_RULES[name]?.compactOnExpand, name).toBe(true);
+		}
+		expect(TOOL_RULES.ask?.route).toBe("native-live");
+		expect(TOOL_RULES.ask?.compactOnExpand).toBeUndefined();
+		expect(TOOL_RULES.task?.route).toBe("compact");
+	});
+
+	test("compactOnExpand is opt-in: only the interactive four carry it", () => {
+		const expanded = Object.entries(TOOL_RULES)
+			.filter(([, rule]) => rule?.compactOnExpand === true)
+			.map(([name]) => name)
+			.sort();
+		expect(expanded).toEqual(["browser", "computer", "reject", "resolve"]);
+		for (const [name, rule] of Object.entries(TOOL_RULES)) {
+			expect(rule, name).toBeDefined();
+			if (!rule) continue;
+			if (["browser", "computer", "resolve", "reject"].includes(name)) {
+				expect(rule.compactOnExpand, name).toBe(true);
+			} else {
+				expect(rule.compactOnExpand, name).toBeUndefined();
+			}
+		}
+	});
+
+	test("existing routine tools are explicitly compact", () => {
+		for (const name of [
+			"bash",
+			"write",
+			"edit",
+			"grep",
+			"glob",
+			"find",
+			"hub",
+			"wait",
+			"todo",
+			"eval",
+			"yield",
+			"hus",
+			"web_search",
+			"ast_grep",
+			"ast_edit",
+			"inspect_image",
+			"browser",
+			"computer",
+			"resolve",
+			"reject",
+			"ida",
+			"github",
+			"lsp",
+			"checkpoint",
+			"rewind",
+			"context_notes",
+			"new_context",
+			"memory_edit",
+			"retain",
+			"recall",
+			"reflect",
+			"learn",
+			"manage_skill",
+		]) {
+			expect(TOOL_RULES[name]?.route, name).toBe("compact");
+		}
+	});
+
+	test("audit kinds: write→write, edit→edit, bash→git-bash, all others none", () => {
+		const expected: Record<string, ToolAuditKind> = {
+			write: "write",
+			edit: "edit",
+			bash: "git-bash",
+		};
+		for (const [name, rule] of Object.entries(TOOL_RULES)) {
+			expect(rule, name).toBeDefined();
+			if (!rule) continue;
+			expect(rule.audit, name).toBe(expected[name] ?? "none");
+		}
+	});
+
+	test("registry and rule data are frozen/static", () => {
+		expect(Object.isFrozen(TOOL_RULES)).toBe(true);
+		for (const rule of Object.values(TOOL_RULES)) {
+			expect(rule).toBeDefined();
+			if (!rule) continue;
+			expect(Object.isFrozen(rule)).toBe(true);
+			expect(Object.isFrozen(rule.knownArgs)).toBe(true);
+			expect(Object.isFrozen(rule.knownDetails)).toBe(true);
+		}
+	});
+
+	test("every rule carries bounded arg/detail inventories", () => {
+		for (const [name, rule] of Object.entries(TOOL_RULES)) {
+			expect(rule, name).toBeDefined();
+			if (!rule) continue;
+			expect(Array.isArray(rule.knownArgs), name).toBe(true);
+			expect(Array.isArray(rule.knownDetails), name).toBe(true);
+			expect(
+				rule.knownArgs.every((key) => typeof key === "string"),
+				name,
+			).toBe(true);
+			expect(
+				rule.knownDetails.every((key) => typeof key === "string"),
+				name,
+			).toBe(true);
+		}
+	});
+});
+
+describe("effective audit kind of one call", () => {
+	test("a file write audits as a write; a device write audits nothing", () => {
+		expect(resolveToolAudit("write", { path: "src/a.ts", content: "x" })).toBe(
+			"write",
+		);
+		expect(
+			resolveToolAudit("write", { path: "xd://github", content: "{}" }),
+		).toBe("none");
+		expect(
+			resolveToolAudit("write", { path: "xd://resolve", content: "why" }),
+		).toBe("none");
+		expect(resolveToolAudit("write", { file_path: "xd://github" })).toBe(
+			"none",
+		);
+	});
+
+	test("other registered kinds are unchanged; unknown names audit nothing", () => {
+		expect(resolveToolAudit("edit", { input: "[src/a.ts#A1B2]" })).toBe("edit");
+		expect(resolveToolAudit("apply_patch", { input: "" })).toBe("edit");
+		expect(resolveToolAudit("bash", { command: "git status" })).toBe(
+			"git-bash",
+		);
+		expect(resolveToolAudit("read", { path: "src/a.ts" })).toBe("none");
+		expect(resolveToolAudit("custom_tool", {})).toBe("none");
+		expect(resolveToolAudit("", undefined)).toBe("none");
+	});
+
+	test("unreadable args never throw and never disable a real file audit", () => {
+		const hostile: readonly unknown[] = [
+			undefined,
+			null,
+			"str",
+			42,
+			[],
+			{ path: 5 },
+			{ path: "" },
+			// bare device root and a path-bearing device URL are not device
+			// names: they keep the write kind, and the audit module's own
+			// URI-scheme guard refuses them before touching the filesystem.
+			{ path: "xd://" },
+			{ path: "xd://github/extra" },
+		];
+		for (const [index, args] of hostile.entries()) {
+			expect(resolveToolAudit("write", args), String(index)).toBe("write");
+		}
+	});
+
+	test("a non-file transport write audits nothing", () => {
+		// OMP 18.3.0 turned `proc://` (jobs, services, daemons) and `agent://`
+		// (peer mailboxes) into write targets. They are transports, not files:
+		// attributing a local file mutation to them would be a false record.
+		for (const path of ["proc://web/kill", "proc://", "agent://AuthLoader"]) {
+			expect(resolveToolAudit("write", { path, content: "" }), path).toBe(
+				"none",
+			);
+			expect(
+				resolveToolAudit("write", { file_path: path, content: "" }),
+				path,
+			).toBe("none");
+		}
+		// A path that merely shares a prefix is still an ordinary file write.
+		expect(
+			resolveToolAudit("write", { path: "procs/web.txt", content: "x" }),
+		).toBe("write");
+	});
+});
+
+describe("transport target write/read presentation", () => {
+	test("proc:// and agent:// addresses format as proc/agent titles", () => {
+		expect(describeTool("write", { path: "proc://web/kill" })).toEqual({
+			title: "proc",
+			description: "web/kill",
+			meta: [],
+		});
+		expect(describeTool("write", { path: "agent://AuthLoader" })).toEqual({
+			title: "agent",
+			description: "AuthLoader",
+			meta: [],
+		});
+		expect(describeTool("read", { path: "proc://" })).toEqual({
+			title: "proc",
+			description: "/",
+			meta: [],
+		});
+		expect(describeTool("read", { path: "agent://AuthLoader" })).toEqual({
+			title: "agent",
+			description: "AuthLoader",
+			meta: [],
+		});
+	});
+});
+
+describe("host tool rename (hub → wait in OMP 18.3.0)", () => {
+	test("wait is registered compact with no args and job-shaped details", () => {
+		const rule = TOOL_RULES.wait;
+		expect(rule).toBeDefined();
+		expect(rule?.route).toBe("compact");
+		expect(rule?.audit).toBe("none");
+		// Stock declares `type({})`: the tool carries no arguments at all.
+		expect(rule?.knownArgs).toEqual([]);
+		expect(rule?.knownDetails).toContain("jobs");
+		expect(rule?.knownDetails).toContain("cancelled");
+		expect(rule?.knownDetails).toContain("agents");
+	});
+
+	test("hub stays registered for hosts up to 18.2.11", () => {
+		// The public floor is 18.0.1: `hub` is the wire name before the rename
+		// and must keep its rule, or every older host loses compact coverage.
+		expect(TOOL_RULES.hub?.route).toBe("compact");
+		expect(resolveToolRule("hub")).toBe(TOOL_RULES.hub);
+		expect(resolveToolRule("wait")).toBe(TOOL_RULES.wait);
+		expect(resolveToolRule("wait")).not.toBe(TOOL_RULES.hub);
+	});
+
+	test("wait carries no arguments, so its row never invents one", () => {
+		expect(describeTool("wait", {})?.description).toBe("");
+		expect(describeTool("wait", { op: "wait" })?.description).toBe("op: wait");
+	});
+});
+
+describe("alias normalization", () => {
+	test("ast-grep/ast-edit resolve to their underscore canonical rules", () => {
+		expect(normalizeToolName("ast-grep")).toBe("ast_grep");
+		expect(normalizeToolName("ast-edit")).toBe("ast_edit");
+		expect(resolveToolRule("ast-grep")).toBe(TOOL_RULES.ast_grep);
+		expect(resolveToolRule("ast-edit")).toBe(TOOL_RULES.ast_edit);
+		expect(resolveToolRule("ast-grep")).toBe(resolveToolRule("ast_grep"));
+		expect(resolveToolRule("ast-edit")).toBe(resolveToolRule("ast_edit"));
+	});
+
+	test("apply_patch resolves to the canonical edit rule", () => {
+		expect(normalizeToolName("apply_patch")).toBe("edit");
+		expect(resolveToolRule("apply_patch")).toBe(TOOL_RULES.edit);
+		expect(resolveToolRule("apply_patch")?.route).toBe("compact");
+		expect(resolveToolRule("apply_patch")?.audit).toBe("edit");
+		expect(resolveToolRule("apply_patch")?.knownArgs).toContain("input");
+	});
+
+	test("jfind resolves to the canonical find rule", () => {
+		expect(normalizeToolName("jfind")).toBe("find");
+		expect(resolveToolRule("jfind")).toBe(TOOL_RULES.find);
+		expect(resolveToolRule("jfind")?.route).toBe("compact");
+		expect(resolveToolRule("jfind")?.knownArgs).toContain("query");
+	});
+
+	test("hyphen/underscore normalization is deterministic for any spelling", () => {
+		expect(normalizeToolName("custom-tool")).toBe("custom_tool");
+		expect(resolveToolRule("custom-tool")).toBeUndefined();
+		expect(resolveToolRule("custom_tool")).toBeUndefined();
+	});
+
+	test("alias spellings are not registry keys themselves", () => {
+		expect(TOOL_RULES["ast-grep"]).toBeUndefined();
+		expect(TOOL_RULES["ast-edit"]).toBeUndefined();
+		expect(TOOL_RULES.jfind).toBeUndefined();
+	});
+});
+
+describe("explicit unknown lookup", () => {
+	test("unregistered names resolve to undefined — never an implicit compact rule", () => {
+		expect(resolveToolRule("unknown")).toBeUndefined();
+		expect(resolveToolRule("custom_tool")).toBeUndefined();
+		expect(resolveToolRule("")).toBeUndefined();
+	});
+
+	test("describeTool returns undefined for unregistered names", () => {
+		expect(describeTool("custom_tool", { value: "x" })).toBeUndefined();
+		expect(describeTool("nope", undefined)).toBeUndefined();
+	});
+
+	test("Object.prototype collision names never resolve and never throw", () => {
+		const collisions = [
+			"constructor",
+			"toString",
+			"__proto__",
+			"hasOwnProperty",
+			"valueOf",
+			"isPrototypeOf",
+			"propertyIsEnumerable",
+			"toLocaleString",
+		] as const;
+		for (const name of collisions) {
+			const normalized = normalizeToolName(name);
+			expect(typeof normalized, name).toBe("string");
+			expect(normalized, name).toBe(name.replaceAll("-", "_"));
+			expect(resolveToolRule(name), name).toBeUndefined();
+			expect(describeTool(name, {}), name).toBeUndefined();
+		}
+	});
+
+	test("direct registry index of prototype collision keys is undefined", () => {
+		// Residual hazard after accessor-only guards: exported tables that still
+		// inherit Object.prototype make TOOL_RULES["constructor"] a function.
+		const collisions = [
+			"constructor",
+			"toString",
+			"__proto__",
+			"hasOwnProperty",
+		] as const;
+		for (const key of collisions) {
+			expect(TOOL_RULES[key], `TOOL_RULES[${key}]`).toBeUndefined();
+			expect(TOOL_ALIASES[key], `TOOL_ALIASES[${key}]`).toBeUndefined();
+		}
+	});
+
+	test("registries are null-prototype so collision keys cannot reappear", () => {
+		// Locks the table shape itself: reverting to a plain object literal fails
+		// even if Object.hasOwn guards remain on the accessors.
+		expect(Object.getPrototypeOf(TOOL_RULES)).toBeNull();
+		expect(Object.getPrototypeOf(TOOL_ALIASES)).toBeNull();
+	});
+});
+
+describe("bounded generic helper", () => {
+	test("tolerates cyclic objects without serializing them", () => {
+		const args: Record<string, unknown> = { action: "run" };
+		args.self = args;
+		expect(genericToolDescription("custom_tool", args)).toEqual({
+			title: "custom tool",
+			description: "action: run self: {…}",
+			meta: [],
+		});
+	});
+
+	test("bounds string values, list sizes and entry count", () => {
+		const long = "x".repeat(10_000);
+		const description = genericToolDescription("t", {
+			a: long,
+			b: Array.from({ length: 20 }, (_, i) => `item-${i}`),
+			c: { deep: true },
+			d: 5,
+			e: null,
+			__hidden: "skip",
+		}).description;
+		expect(description).toContain("a: ".concat(long.slice(0, 160)));
+		expect(description).toContain("b: [20 items]");
+		expect(description).toContain("c: {…}");
+		expect(description).toContain("d: 5");
+		// The pair cap (four) is what hides `e: null` here — null itself
+		// renders as "null" when it fits within the cap (see the dedicated
+		// null test), and __-prefixed keys are skipped by their own rule.
+		expect(description).not.toContain("__hidden");
+		expect(description).not.toContain("skip");
+	});
+
+	test("underscore and hyphen spellings share one lowercase title", () => {
+		expect(genericToolDescription("Custom_Tool", {}).title).toBe("custom tool");
+		expect(genericToolDescription("custom-tool", {}).title).toBe("custom tool");
+	});
+});
+
+describe("existing tool descriptions", () => {
+	test("bash shows the command and cwd meta", () => {
+		expect(describeTool("bash", { command: "bun test", cwd: "/tmp" })).toEqual({
+			title: "bash",
+			description: "bun test",
+			meta: ["in /tmp"],
+		});
+	});
+
+	test("read shows path plus offset/limit range", () => {
+		expect(describeTool("read", { path: "src/a.ts" })?.description).toBe(
+			"src/a.ts",
+		);
+		expect(
+			describeTool("read", { path: "src/a.ts", offset: 10, limit: 5 })
+				?.description,
+		).toBe("src/a.ts:10-14");
+		expect(
+			describeTool("read", { path: "src/a.ts", offset: 3 })?.description,
+		).toBe("src/a.ts:3");
+		expect(
+			describeTool("read", { path: "src/a.ts", limit: 3 })?.description,
+		).toBe("src/a.ts:1-3");
+		expect(describeTool("read", { file_path: "src/b.ts" })?.description).toBe(
+			"src/b.ts",
+		);
+	});
+
+	test("grep shows the pattern and search paths", () => {
+		expect(describeTool("grep", { pattern: "x", path: ["src"] })).toEqual({
+			title: "grep",
+			description: "x",
+			meta: ["in src"],
+		});
+		expect(
+			describeTool("grep", { pattern: "", path: "src" })?.description,
+		).toBe("?");
+		expect(describeTool("grep", {})?.description).toBe("?");
+	});
+
+	test("glob shows the pattern list or *", () => {
+		expect(describeTool("glob", { path: ["src/*.ts"] })?.description).toBe(
+			"src/*.ts",
+		);
+		expect(describeTool("glob", {})?.description).toBe("*");
+	});
+
+	test("write shows the target path", () => {
+		expect(describeTool("write", { path: "src/a.ts" })).toEqual({
+			title: "write",
+			description: "src/a.ts",
+			meta: [],
+		});
+	});
+
+	test("device write names the device and operation, not the transport path", () => {
+		expect(
+			describeTool("write", {
+				path: "xd://github",
+				content: JSON.stringify({ op: "pr_create", title: "x" }),
+			}),
+		).toEqual({ title: "github", description: "pr_create", meta: [] });
+		// both stock spellings of the operation key
+		expect(
+			describeTool("write", {
+				path: "xd://security_scan",
+				content: JSON.stringify({ action: "preflight" }),
+			}),
+		).toEqual({ title: "security_scan", description: "preflight", meta: [] });
+		// the device address is also accepted through file_path
+		expect(
+			describeTool("write", {
+				file_path: "xd://github",
+				content: '{"op":"repo_view"}',
+			})?.title,
+		).toBe("github");
+	});
+
+	test("a device carrying no operation prints the device name alone", () => {
+		expect(
+			describeTool("write", {
+				path: "xd://ast_grep",
+				content: JSON.stringify({ pat: "$A" }),
+			}),
+		).toEqual({ title: "ast_grep", description: "", meta: [] });
+		expect(describeTool("write", { path: "xd://github" })?.description).toBe(
+			"",
+		);
+	});
+
+	test("unparsable, oversized and array device content leave the name alone", () => {
+		for (const content of [
+			'{"op":',
+			"[1,2]",
+			JSON.stringify({ op: "pr_create", pad: "a".repeat(70_000) }),
+		]) {
+			expect(describeTool("write", { path: "xd://github", content })).toEqual({
+				title: "github",
+				description: "",
+				meta: [],
+			});
+		}
+	});
+
+	test("non-device write targets keep plain write presentation", () => {
+		expect(describeTool("write", { path: "src/a.ts", content: "x" })).toEqual({
+			title: "write",
+			description: "src/a.ts",
+			meta: [],
+		});
+		expect(describeTool("write", { path: "xd://" })).toEqual({
+			title: "write",
+			description: "xd://",
+			meta: [],
+		});
+		expect(describeTool("write", { path: "xd://github/extra" })?.title).toBe(
+			"write",
+		);
+	});
+
+	test("text devices present as resolutions with their own title and color", () => {
+		expect(
+			describeTool("write", {
+				path: "xd://resolve",
+				content: "applying staged edit",
+			}),
+		).toEqual({
+			title: "resolve",
+			description: "applying staged edit",
+			meta: [],
+			titleColor: "#A4D734",
+		});
+		expect(
+			describeTool("write", { path: "xd://reject", content: "discarding" }),
+		).toEqual({
+			title: "reject",
+			description: "discarding",
+			meta: [],
+			titleColor: "#A1471A",
+		});
+		expect(
+			describeTool("write", { path: "xd://report_issue", content: "bad row" })
+				?.title,
+		).toBe("report issue");
+		expect(
+			describeTool("write", { path: "xd://propose", content: "try this" }),
+		).toEqual({ title: "propose", description: "try this", meta: [] });
+	});
+
+	test("edit extracts bounded hashline targets from input", () => {
+		const input =
+			"[src/a.ts#A1B2]\nPUT 1.=1:\n+one\n[src/b.ts#C3D4]\nPUT 2.=2:\n+two";
+		expect(describeTool("edit", { input })?.description).toBe(
+			"src/a.ts, src/b.ts",
+		);
+		expect(describeTool("edit", { path: "src/a.ts" })?.description).toBe(
+			"src/a.ts",
+		);
+	});
+
+	test("apply_patch alias extracts bounded envelope targets", () => {
+		const input =
+			"*** Begin Patch\n*** Update File: src/a.ts\n@@\n-old\n+new\n*** Add File: src/b.ts\n+two\n*** End Patch";
+		expect(describeTool("apply_patch", { input })).toEqual({
+			title: "edit",
+			description: "src/a.ts, src/b.ts",
+			meta: [],
+		});
+	});
+
+	test("edit names the file a sloppy payload opens", () => {
+		// 18.3.0 respelled the sloppy opener to `*** Edit File:`; hosts up to
+		// 18.2.11 used `*** SM:EDIT`. Both must name the file in the row.
+		const modern =
+			"*** Edit File: src/a.ts\n*** Find\nconst x = 1;\n*** Replace\nconst x = 2;";
+		expect(describeTool("edit", { input: modern })?.description).toBe(
+			"src/a.ts",
+		);
+		const legacy =
+			"*** SM:EDIT src/a.ts\n*** SM:FIND\nconst x = 1;\n*** SM:PUT\nconst x = 2;";
+		expect(describeTool("edit", { input: legacy })?.description).toBe(
+			"src/a.ts",
+		);
+	});
+
+	test("edit aliases accept the legacy streaming _input field", () => {
+		const _input =
+			"*** Begin Patch\n*** Update File: src/legacy.ts\n@@\n-old\n+new\n*** End Patch";
+		expect(describeTool("apply_patch", { _input })?.description).toBe(
+			"src/legacy.ts",
+		);
+		expect(resolveToolRule("apply_patch")?.knownArgs).toContain("_input");
+	});
+
+	test("ast_grep/ast_edit/inspect_image keep their labels", () => {
+		expect(describeTool("ast_grep", { pat: "$A", path: ["src"] })).toEqual({
+			title: "ast grep",
+			description: "$A",
+			meta: ["in src"],
+		});
+		expect(describeTool("ast-edit", { paths: ["src/a.ts"] })).toEqual({
+			title: "ast edit",
+			description: "src/a.ts",
+			meta: [],
+		});
+		expect(
+			describeTool("inspect_image", { path: "shots/x.png" })?.description,
+		).toBe("shots/x.png");
+		expect(describeTool("inspect_image", { path: "shots/x.png" })?.title).toBe(
+			"inspect image",
+		);
+	});
+
+	test("browser description is URL only with action fallback", () => {
+		expect(
+			describeTool("browser", { action: "open", url: "https://x" })
+				?.description,
+		).toBe("https://x");
+		expect(describeTool("browser", { url: "https://x" })?.description).toBe(
+			"https://x",
+		);
+		expect(describeTool("browser", { action: "run" })?.description).toBe("run");
+		expect(describeTool("browser", {})?.description).toBe("");
+		expect(describeTool("browser", {})?.title).toBe("browser");
+		// browser keeps the ordinary dim title — no color metadata
+		expect(describeTool("browser", { url: "https://x" })?.titleColor).toBe(
+			undefined,
+		);
+	});
+
+	test("computer exposes a short action payload with colored title", () => {
+		const withIntent = describeTool("computer", {
+			code: "await desktop.focusedWindow().ax()",
+			i: "Read Spotify window state",
+		});
+		expect(withIntent?.title).toBe("computer use");
+		expect(withIntent?.description).toBe("Read Spotify window state");
+		expect(withIntent?.titleColor).toBe("#8D2A88");
+		expect(
+			describeTool("computer", { read_only: true, i: "Peek" })?.meta,
+		).toEqual(["read-only"]);
+		expect(
+			describeTool("computer", { code: "await desktop.windows()" })
+				?.description,
+		).toBe("await desktop.windows()");
+		expect(describeTool("computer", {})?.description).toBe("?");
+		expect(describeTool("computer", {})?.meta).toEqual([]);
+	});
+
+	test("computer description truncates at code points without splitting astral pairs", () => {
+		const intent = `${"a".repeat(159)}👍tail`;
+		const withIntent = describeTool("computer", { i: intent });
+		const intentDesc = withIntent?.description ?? "";
+		expect(intentDesc).toBe(`${"a".repeat(159)}👍`);
+		expect([...intentDesc].length).toBe(160);
+		expect(
+			[...intentDesc].every((ch) => {
+				const cp = ch.codePointAt(0) ?? 0;
+				return cp < 0xd800 || cp > 0xdfff;
+			}),
+		).toBe(true);
+
+		const code = `\n\n${"b".repeat(159)}🚀tail\nsecond line`;
+		const withCode = describeTool("computer", { code });
+		const codeDesc = withCode?.description ?? "";
+		expect(codeDesc).toBe(`${"b".repeat(159)}🚀`);
+		expect([...codeDesc].length).toBe(160);
+		expect(
+			[...codeDesc].every((ch) => {
+				const cp = ch.codePointAt(0) ?? 0;
+				return cp < 0xd800 || cp > 0xdfff;
+			}),
+		).toBe(true);
+	});
+
+	test("resolve/reject extract structured reason/status/path with colored titles", () => {
+		// one-sentence reason content (write-device shape) wins
+		expect(
+			describeTool("resolve", {
+				path: "xd://resolve",
+				content: "applying staged edit",
+			}),
+		).toEqual({
+			title: "resolve",
+			description: "applying staged edit",
+			meta: [],
+			titleColor: "#A4D734",
+		});
+		expect(
+			describeTool("reject", {
+				path: "xd://reject",
+				content: "overlaps a newer change",
+			})?.description,
+		).toBe("overlaps a newer change");
+		expect(describeTool("reject", {})?.title).toBe("reject");
+		expect(describeTool("reject", {})?.titleColor).toBe("#A1471A");
+		// direct reason field, then yield-style result.error, then status, then path
+		expect(
+			describeTool("resolve", { reason: "looks correct" })?.description,
+		).toBe("looks correct");
+		expect(
+			describeTool("reject", { result: { error: "repro failed" } })
+				?.description,
+		).toBe("repro failed");
+		expect(describeTool("resolve", { status: "success" })?.description).toBe(
+			"success",
+		);
+		expect(describeTool("reject", { path: "xd://reject" })?.description).toBe(
+			"xd://reject",
+		);
+		// neutral safe fallback when no structured field is present
+		expect(describeTool("resolve", {})?.description).toBe("?");
+		expect(describeTool("reject", {})?.description).toBe("?");
+	});
+
+	test("resolution reasons stay bounded and never parse ANSI output", () => {
+		const long = "x".repeat(20_000);
+		expect(
+			describeTool("resolve", { content: long })?.description?.length,
+		).toBe(4_096);
+		// structured fields only — raw ANSI in content passes through unparsed,
+		// the description is never derived from rendered/native output
+		const ansi = "\u001b[32mapplied\u001b[0m";
+		expect(describeTool("reject", { content: ansi })?.description).toBe(ansi);
+	});
+
+	test("registered routine tools describe through the bounded generic form", () => {
+		expect(describeTool("hub", { op: "send", to: "Main" })).toEqual({
+			title: "hub",
+			description: "op: send to: Main",
+			meta: [],
+		});
+		expect(
+			describeTool("hub", { op: "logs", name: "web", follow: true }),
+		).toEqual({
+			title: "launch",
+			description: "logs web",
+			meta: [],
+		});
+		expect(
+			describeTool("hub", {
+				op: "start",
+				name: "web",
+				application: "bun",
+				args: ["run", "dev"],
+			}),
+		).toEqual({
+			title: "launch",
+			description: "start web bun",
+			meta: [],
+		});
+		expect(describeTool("hub", { op: "ps" })).toEqual({
+			title: "launch",
+			description: "list",
+			meta: [],
+		});
+		// Process-targeted send/wait are launch-style (no peer to/from).
+		expect(
+			describeTool("hub", { op: "send", name: "web", text: "hi" }),
+		).toEqual({
+			title: "launch",
+			description: "send web",
+			meta: [],
+		});
+		expect(describeTool("todo", { op: "init" })?.title).toBe("todo");
+		expect(describeTool("eval", { language: "py" })?.description).toBe(
+			"language: py",
+		);
+		expect(describeTool("yield", {})?.title).toBe("yield");
+		expect(describeTool("hus", {})?.title).toBe("hus");
+		expect(describeTool("ask", { question: "q" })?.title).toBe("ask");
+	});
+
+	test("web_search is an explicit compact rule with its schema args", () => {
+		const rule = TOOL_RULES.web_search;
+		expect(rule?.route).toBe("compact");
+		expect(rule?.audit).toBe("none");
+		expect(rule?.knownArgs).toEqual([
+			"i",
+			"query",
+			"recency",
+			"limit",
+			"max_tokens",
+			"num_search_results",
+			"temperature",
+		]);
+		// no stock result evidence exists yet — conservative empty inventory
+		expect(rule?.knownDetails).toEqual([]);
+		expect(rule?.resultMeta).toBeUndefined();
+		expect(describeTool("web_search", { query: "registry", limit: 3 })).toEqual(
+			{
+				title: "web search",
+				description: "query: registry limit: 3",
+				meta: [],
+			},
+		);
+	});
+
+	test("find shows the natural-language query and the searched scope", () => {
+		const rule = TOOL_RULES.find;
+		expect(rule?.route).toBe("compact");
+		expect(rule?.audit).toBe("none");
+		expect(rule?.knownArgs).toEqual(["query", "grep_keywords", "path"]);
+		expect(rule?.knownDetails).toEqual([
+			"query",
+			"used",
+			"keywords",
+			"threshold",
+			"hits",
+			"stats",
+			"elapsedMs",
+			"cwd",
+			"scopePath",
+			"meta",
+		]);
+		expect(
+			describeTool("find", {
+				query: "where is the retry budget counted?",
+				grep_keywords: ["retry", "attempt"],
+			}),
+		).toEqual({
+			title: "find",
+			description: "where is the retry budget counted?",
+			meta: [],
+		});
+		expect(
+			describeTool("find", { query: "renderer registry", path: "packages/tui" })
+				?.meta,
+		).toEqual(["in packages/tui"]);
+		// a non-string path is not a scope: no invented location
+		expect(describeTool("find", { query: "q", path: 7 })?.meta).toEqual([]);
+	});
+
+	test("unreadable find arguments leave the query unknown — never throw", () => {
+		for (const args of [
+			undefined,
+			null,
+			"query",
+			42,
+			[],
+			{},
+			{ query: 5 },
+			{ query: "" },
+		]) {
+			const described = describeTool("find", args);
+			expect(described?.title).toBe("find");
+			expect(described?.description).toBe("?");
+			expect(described?.meta).toEqual([]);
+		}
+	});
+
+	test("bounds specialized string arguments before rendering", () => {
+		const description = describeTool("bash", {
+			command: "x".repeat(20_000),
+		})?.description;
+		expect(description?.length).toBeLessThanOrEqual(4_096);
+	});
+});
+
+describe("project-relative display paths", () => {
+	const display = { cwd: "/project", enabled: true };
+
+	test("read/write/edit/grep/glob relativize in-cwd paths", () => {
+		expect(
+			describeTool("read", { path: "/project/src/a.ts" }, display)?.description,
+		).toBe("src/a.ts");
+		expect(
+			describeTool(
+				"read",
+				{ path: "/project/src/a.ts", offset: 10, limit: 5 },
+				display,
+			)?.description,
+		).toBe("src/a.ts:10-14");
+		expect(
+			describeTool("write", { path: "/project/src/a.ts" }, display)
+				?.description,
+		).toBe("src/a.ts");
+		expect(
+			describeTool("edit", { path: "/project/src/a.ts" }, display)?.description,
+		).toBe("src/a.ts");
+		expect(
+			describeTool("grep", { pattern: "x", path: ["/project/src"] }, display)
+				?.meta,
+		).toEqual(["in src"]);
+		expect(
+			describeTool("glob", { path: ["/project/src/*.ts"] }, display)
+				?.description,
+		).toBe("src/*.ts");
+	});
+
+	test("find scope relativizes to the project", () => {
+		expect(
+			describeTool(
+				"find",
+				{ query: "renderer registry", path: "/project/src/tools" },
+				display,
+			)?.meta,
+		).toEqual(["in src/tools"]);
+	});
+
+	test("cwd itself renders as dot", () => {
+		expect(
+			describeTool("read", { path: "/project" }, display)?.description,
+		).toBe(".");
+	});
+
+	test("external paths, uris, archive/sqlite selectors stay verbatim", () => {
+		expect(
+			describeTool("read", { path: "/etc/hosts" }, display)?.description,
+		).toBe("/etc/hosts");
+		expect(
+			describeTool("read", { path: "/project/x.tar:inner/f.ts" }, display)
+				?.description,
+		).toBe("x.tar:inner/f.ts");
+		expect(
+			describeTool("read", { path: "/project/db.sqlite:table:key" }, display)
+				?.description,
+		).toBe("db.sqlite:table:key");
+		expect(
+			describeTool("read", { path: "https://example.com/a" }, display)
+				?.description,
+		).toBe("https://example.com/a");
+		expect(
+			describeTool("read", { path: "/project-x/a.ts" }, display)?.description,
+		).toBe("/project-x/a.ts");
+	});
+
+	test("edit hashline headers relativize", () => {
+		const input = "[/project/src/a.ts#A1B2]\nPUT 1.=1:\n+one";
+		expect(describeTool("edit", { input }, display)?.description).toBe(
+			"src/a.ts",
+		);
+	});
+
+	test("bash cwd meta relativizes", () => {
+		expect(
+			describeTool(
+				"bash",
+				{ command: "bun test", cwd: "/project/sub" },
+				display,
+			)?.meta,
+		).toEqual(["in sub"]);
+	});
+
+	test("ast_grep/ast_edit/inspect_image labels relativize their paths", () => {
+		expect(
+			describeTool("ast_grep", { pat: "$A", path: ["/project/src"] }, display)
+				?.meta,
+		).toEqual(["in src"]);
+		expect(
+			describeTool("ast_edit", { paths: ["/project/src/a.ts"] }, display)
+				?.description,
+		).toBe("src/a.ts");
+		expect(
+			describeTool("inspect_image", { path: "/project/shots/x.png" }, display)
+				?.description,
+		).toBe("shots/x.png");
+	});
+
+	test("setting off is byte-for-byte current display", () => {
+		const args = { path: "/project/src/a.ts", offset: 2, limit: 3 };
+		expect(
+			describeTool("read", args, { cwd: "/project", enabled: false }),
+		).toEqual(describeTool("read", args));
+		expect(describeTool("read", args, undefined)).toEqual(
+			describeTool("read", args),
+		);
+	});
+});
+
+describe("tool-specific settled result metadata", () => {
+	test("bash reports non-zero exit codes and wall time", () => {
+		const rule = TOOL_RULES.bash;
+		expect(
+			rule?.resultMeta?.({
+				content: [],
+				details: { exitCode: 2, wallTimeMs: 1500 },
+			}),
+		).toEqual(["exit 2", "1.5s"]);
+		expect(
+			rule?.resultMeta?.({ details: { exitCode: 127, wallTimeMs: 100_000 } }),
+		).toEqual(["exit 127", "100s"]);
+		expect(
+			rule?.resultMeta?.({ details: { exitCode: 0, wallTimeMs: 500 } }),
+		).toEqual(["0.5s"]);
+		expect(rule?.resultMeta?.({ details: {} })).toEqual([]);
+		expect(rule?.resultMeta?.(undefined)).toEqual([]);
+	});
+
+	test("grep reports the match count with singular/plural", () => {
+		const rule = TOOL_RULES.grep;
+		expect(rule?.resultMeta?.({ details: { matchCount: 3 } })).toEqual([
+			"3 matches",
+		]);
+		expect(rule?.resultMeta?.({ details: { matchCount: 1 } })).toEqual([
+			"1 match",
+		]);
+		expect(rule?.resultMeta?.({ details: {} })).toEqual([]);
+	});
+
+	test("glob reports the file count with singular/plural", () => {
+		const rule = TOOL_RULES.glob;
+		expect(rule?.resultMeta?.({ details: { fileCount: 5 } })).toEqual([
+			"5 files",
+		]);
+		expect(rule?.resultMeta?.({ details: { fileCount: 1 } })).toEqual([
+			"1 file",
+		]);
+		expect(rule?.resultMeta?.({ details: {} })).toEqual([]);
+	});
+
+	test("resolve/reject report the apply/discard action and its source", () => {
+		const result = {
+			details: {
+				xdev: {
+					tool: "resolve",
+					inner: {
+						action: "apply",
+						reason: "applying staged edit",
+						sourceToolName: "edit",
+						label: "src/a.ts",
+					},
+				},
+			},
+		};
+		expect(TOOL_RULES.resolve?.resultMeta?.(result)).toEqual(["apply", "edit"]);
+		expect(TOOL_RULES.reject?.resultMeta?.(result)).toEqual(["apply", "edit"]);
+		// fallback to a generic settled status, then empty
+		expect(
+			TOOL_RULES.resolve?.resultMeta?.({ details: { status: "success" } }),
+		).toEqual(["success"]);
+		expect(TOOL_RULES.resolve?.resultMeta?.(undefined)).toEqual([]);
+		expect(TOOL_RULES.resolve?.resultMeta?.({ details: {} })).toEqual([]);
+	});
+
+	test("device write confirms the operation from the dispatched args", () => {
+		const rule = TOOL_RULES.write;
+		const args = { path: "xd://github", content: "{}" };
+		expect(
+			rule?.resultMeta?.(
+				{ details: { xdev: { tool: "github", args: { op: "repo_view" } } } },
+				args,
+			),
+		).toEqual(["repo_view"]);
+		expect(
+			rule?.resultMeta?.(
+				{ details: { xdev: { args: { action: "preflight" } } } },
+				{ path: "xd://security_scan", content: "{}" },
+			),
+		).toEqual(["preflight"]);
+		// the call content already named it — never printed twice
+		expect(
+			rule?.resultMeta?.(
+				{ details: { xdev: { args: { op: "repo_view" } } } },
+				{ path: "xd://github", content: '{"op":"repo_view"}' },
+			),
+		).toEqual([]);
+		// missing details, broken details, help-mode dispatch without args
+		expect(rule?.resultMeta?.({ details: {} }, args)).toEqual([]);
+		expect(rule?.resultMeta?.({ details: { xdev: 5 } }, args)).toEqual([]);
+		expect(rule?.resultMeta?.({ details: { xdev: {} } }, args)).toEqual([]);
+		expect(rule?.resultMeta?.(undefined, args)).toEqual([]);
+		// an ordinary file write, and unreadable call args
+		expect(
+			rule?.resultMeta?.(
+				{ details: { xdev: { args: { op: "repo_view" } } } },
+				{ path: "src/a.ts" },
+			),
+		).toEqual([]);
+		expect(
+			rule?.resultMeta?.(
+				{ details: { xdev: { args: { op: "repo_view" } } } },
+				undefined,
+			),
+		).toEqual([]);
+	});
+
+	test("text device write reports the resolution action and its source", () => {
+		expect(
+			TOOL_RULES.write?.resultMeta?.(
+				{
+					details: {
+						xdev: {
+							tool: "resolve",
+							inner: { action: "apply", sourceToolName: "edit" },
+						},
+					},
+				},
+				{ path: "xd://resolve", content: "applying staged edit" },
+			),
+		).toEqual(["apply", "edit"]);
+		expect(
+			TOOL_RULES.write?.resultMeta?.(
+				{ details: {} },
+				{
+					path: "xd://reject",
+					content: "discarding",
+				},
+			),
+		).toEqual([]);
+	});
+
+	test("find reports hits, files read and failed requests", () => {
+		const rule = TOOL_RULES.find;
+		expect(
+			rule?.resultMeta?.({
+				content: [{ type: "text", text: '2 hit(s) for "x"' }],
+				details: {
+					hits: [{ rel: "src/a.ts" }, { rel: "src/b.ts" }],
+					stats: { filesRead: 12, errors: 0 },
+				},
+			}),
+		).toEqual(["2 hits", "12 files read"]);
+		// A miss still reports the count; zero files read and zero failures
+		// print nothing rather than a pair of dead zeroes.
+		expect(
+			rule?.resultMeta?.({
+				details: { hits: [], stats: { filesRead: 0, errors: 0 } },
+			}),
+		).toEqual(["0 hits"]);
+		expect(
+			rule?.resultMeta?.({
+				details: {
+					hits: [{ rel: "src/a.ts" }],
+					stats: { filesRead: 3, errors: 2 },
+				},
+			}),
+		).toEqual(["1 hit", "3 files read", "2 failed"]);
+	});
+
+	test("unknown find result shapes yield no settled metadata", () => {
+		const rule = TOOL_RULES.find;
+		for (const result of [
+			undefined,
+			null,
+			"text",
+			[],
+			{},
+			{ details: {} },
+			{ details: { hits: null, stats: null } },
+			{ details: { hits: "two", stats: { filesRead: "many" } } },
+		]) {
+			expect(rule?.resultMeta?.(result), JSON.stringify(result)).toEqual([]);
+		}
+	});
+
+	test("no other rule carries result metadata", () => {
+		for (const name of [
+			"read",
+			"edit",
+			"hub",
+			"todo",
+			"eval",
+			"yield",
+			"hus",
+			"ast_grep",
+			"ast_edit",
+			"inspect_image",
+			"browser",
+			"ask",
+			"computer",
+			"task",
+			"vibe_spawn",
+			"vibe_send",
+			"vibe_wait",
+			"vibe_kill",
+			"vibe_list",
+			"ida",
+			"github",
+			"lsp",
+			"checkpoint",
+			"rewind",
+			"context_notes",
+			"new_context",
+			"memory_edit",
+			"retain",
+			"recall",
+			"reflect",
+			"learn",
+			"manage_skill",
+		]) {
+			expect(TOOL_RULES[name]?.resultMeta, name).toBeUndefined();
+		}
+	});
+});
+
+describe("registry shape types", () => {
+	test("routes and audit kinds are the shared closed unions", () => {
+		const routes: ToolRoute[] = ["compact", "read-group", "native-live"];
+		const audits: ToolAuditKind[] = ["none", "write", "edit", "git-bash"];
+		expect(routes).toHaveLength(3);
+		expect(audits).toHaveLength(4);
+		for (const rule of Object.values(TOOL_RULES)) {
+			expect(rule).toBeDefined();
+			if (!rule) continue;
+			expect(routes).toContain(rule.route);
+			expect(audits).toContain(rule.audit);
+		}
+	});
+
+	test("interactive four carry evidence-based arg/detail inventories", () => {
+		expect(TOOL_RULES.browser?.knownArgs).toEqual([
+			"action",
+			"name",
+			"url",
+			"app",
+			"viewport",
+			"wait_until",
+			"dialogs",
+			"code",
+			"timeout",
+			"all",
+			"kill",
+		]);
+		expect(TOOL_RULES.browser?.knownDetails).toEqual([
+			"action",
+			"name",
+			"url",
+			"browser",
+			"viewport",
+			"observation",
+			"screenshots",
+		]);
+		expect(TOOL_RULES.computer?.knownArgs).toEqual([
+			"code",
+			"i",
+			"read_only",
+			"timeout",
+		]);
+		expect(TOOL_RULES.computer?.knownDetails).toEqual([
+			"code",
+			"readOnly",
+			"screenshots",
+			"returnValue",
+			"backend",
+			"capturePermission",
+			"inputPermission",
+			"axPermission",
+		]);
+		for (const name of ["resolve", "reject"]) {
+			expect(TOOL_RULES[name]?.knownArgs).toEqual([
+				"path",
+				"file_path",
+				"content",
+				"reason",
+				"status",
+				"result",
+			]);
+			expect(TOOL_RULES[name]?.knownDetails).toEqual([
+				"xdev",
+				"action",
+				"reason",
+				"sourceToolName",
+				"label",
+				"sourceResultDetails",
+				"status",
+			]);
+		}
+	});
+
+	test("only computer/resolve/reject descriptions carry titleColor", () => {
+		const colored = Object.entries(TOOL_RULES)
+			.filter(([, rule]) => rule?.describe !== undefined)
+			.map(([name]) => ({
+				name,
+				color: describeTool(name, {})?.titleColor,
+			}))
+			.filter((entry) => entry.color !== undefined)
+			.sort((a, b) => a.name.localeCompare(b.name));
+		expect(colored).toEqual([
+			{ name: "computer", color: "#8D2A88" },
+			{ name: "reject", color: "#A1471A" },
+			{ name: "resolve", color: "#A4D734" },
+		]);
+	});
+});

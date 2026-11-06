@@ -1,0 +1,100 @@
+{
+	"rows": ["<answer 1>", "<answer 2>"],
+	"carriers": [
+		{
+			"customType": "omp-compact-git",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_7|fc_<hash>",
+				"subcommand": "status",
+				"text": "git status --short --untracked-files=all",
+				"isError": false,
+				"records": [
+					{
+						"subcommand": "status",
+						"text": "git status --short --untracked-files=all",
+						"isError": false
+					}
+				]
+			}
+		},
+		{
+			"customType": "omp-compact-git",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_8|fc_<hash>",
+				"subcommand": "add",
+				"text": "git add work/PLUGIN-CODE-REVIEW.md",
+				"isError": false,
+				"records": [
+					{
+						"subcommand": "add",
+						"text": "git add work/PLUGIN-CODE-REVIEW.md",
+						"isError": false
+					},
+					{
+						"subcommand": "commit",
+						"text": "git commit -m docs: add omp compact code review",
+						"isError": false
+					}
+				]
+			}
+		},
+		{
+			"customType": "omp-compact-git",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_10|fc_<hash>",
+				"subcommand": "status",
+				"text": "git status --short --untracked-files=all",
+				"isError": false,
+				"records": [
+					{
+						"subcommand": "status",
+						"text": "git status --short --untracked-files=all",
+						"isError": false
+					}
+				]
+			}
+		},
+		{
+			"customType": "omp-compact-git",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_14|fc_<hash>",
+				"subcommand": "status",
+				"text": "git status --short --untracked-files=all",
+				"isError": false,
+				"records": [
+					{
+						"subcommand": "status",
+						"text": "git status --short --untracked-files=all",
+						"isError": false
+					}
+				]
+			}
+		},
+		{
+			"customType": "omp-compact-git",
+			"data": {
+				"version": 1,
+				"toolCallId": "call_15|fc_<hash>",
+				"subcommand": "add",
+				"text": "git add work/goal.md",
+				"isError": false,
+				"records": [
+					{
+						"subcommand": "add",
+						"text": "git add work/goal.md",
+						"isError": false
+					},
+					{
+						"subcommand": "commit",
+						"text": "git commit -m docs: document omp compact goal",
+						"isError": false
+					}
+				]
+			}
+		}
+	]
+}
